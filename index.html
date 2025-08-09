@@ -238,3 +238,28 @@
 
 </body>
 </html>
+<!-- Firebase core SDK -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js"></script>
+<!-- Firebase Authentication -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js"></script>
+<!-- Firebase Firestore -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js"></script><script>
+  const firebaseConfig = {
+    apiKey: "AIzaSyBj_9a5ep2lxKru6yEQqNLHqpSZOm7qi-s",
+    authDomain: "smart-phc-dashboard.firebaseapp.com",
+    projectId: "smart-phc-dashboard",
+    storageBucket: "smart-phc-dashboard.firebasestorage.app",
+    messagingSenderId: "519246980359",
+    appId: "1:519246980359:web:80d2b1dec39076ad2ad1a2",
+    measurementId: "G-QQX4EZK7KP"
+  };
+
+  // Initialize Firebase app
+  const app = firebase.initializeApp(firebaseConfig);
+
+  // Firebase services
+  const auth = firebase.auth();
+  const db = firebase.firestore();
+
+  console.log("Firebase initialized");
+</script>
