@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Smart PHC Dashboard</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      background-color: #f4f6f8;
+    }
+    header {
+      background-color: #007bff;
+      color: white;
+      padding: 15px;
+      text-align: center;
+      font-size: 1.5rem;
+    }
+    .container {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 20px;
+      padding: 20px;
+    }
+    .card {
+      background: white;
+      border-radius: 8px;
+      padding: 20px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+    .card h3 {
+      margin: 0 0 10px;
+    }
+    .stat {
+      font-size: 2rem;
+      font-weight: bold;
+      color: #007bff;
+    }
+  </style>
+</head>
+<body>
+  <header>Smart PHC Dashboard</header>
+  <div class="container">
+    <div class="card">
+      <h3>Total Patients</h3>
+      <div class="stat">1,245</div>
+    </div>
+    <div class="card">
+      <h3>Appointments Today</h3>
+      <div class="stat">56</div>
+    </div>
+    <div class="card">
+      <h3>Staff On Duty</h3>
+      <div class="stat">12</div>
+    </div>
+    <div class="card">
+      <h3>Medicines in Stock</h3>
+      <div class="stat">342</div>
+    </div>
+  </div>
+</body>
+</html>
