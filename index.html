@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Smart PHC Medicine Store - Excel Import</title>
+<style>
+  :root {
+    --blue: #1e90ff;
+    --green: #28a745;
+    --blue-dark: #0b61b5;
+    --green-dark: #1c7c31;
+    --bg-light: #f4f9f4;
+    --white: #fff;
+    --gray-light: #d9e6db;
+    --gray-dark: #666;
+  }
+  body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    margin: 0;
+    background: var(--bg-light);
+    color: var(--gray-dark);
+    padding: 1.5rem;
+    max-width: 960px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+  header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 2rem;
+  }
+  header svg {
+    width: 50px;
+    height: 50px;
+  }
+  header h1 {
+    font-weight: 700;
+    font-size: 1.8rem;
+    color: var(--green-dark);
+    margin: 0;
+    user-select: none;
+  }
+  /* File input */
+  #file-input {
+    display: block;
+    margin-bottom: 1.5rem;
+    padding: 0.6rem 1rem;
+    font-size: 1rem;
+    border-radius: 12px;
+    border: 2px solid var(--green);
+    cursor: pointer;
+    transition: border-color 0.3s ease;
+    width: 100%;
+    max-width: 320px;
+  }
+  #file-input:hover {
+    border-color: var(--blue);
+  }
+  /* Top bar */
+  .top-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+    justify-content: center;
+  }
+  .top-bar input[type="text"] {
+    flex: 1 1 320px;
+    padding: 0.7rem 12px;
+    font-size: 1rem;
+    border-radius: 12px;
+    border: 2px solid var(--green);
+    transition: border-color 0.3s ease;
+  }
+  .top-bar input[type="text"]:focus {
+    outline: none;
+    border-color: var(--blue);
+    box-shadow: 0 0 6px var(--blue);
+  }
+  .top-bar button {
+    background: var(--green);
+    color: var(--white);
+    border: none;
+    border-radius: 12px;
+    padding: 0.65rem 1.3rem;
+    font-weight: 700;
+    cursor: pointer;
+    box-shadow: 0 4px 8px rgba(40, 167, 69, 0.4);
+    transition: background-color 0.3s ease;
+  }
+  .top-bar button:hover {
+    background: var(--green-dark);
+  }
+  /* Table styling */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--white);
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 8px 20px rgba(40, 167, 69, 0.1);
+  }
+  th, td {
+    padding: 0.8rem 1rem;
+    text-align: center;
+    font-size: 0.95rem;
+    border-bottom: 1px solid var(--gray-light);
+  }
+  th {
+    background: var(--green);
+    color: var(--white);
+    position: sticky;
+    top: 0;
+    user-select: none;
+  }
+  tr:last-child td {
+    border-bottom: none;
+  }
+  .near-expiry {
+    background-color: #ffefef;
+    color: #b32929;
+    font-weight: 700;
+  }
+  .low-stock {
+    background-color: #fff9e6;
+    color: #ad7a00;
+    font-weight: 700;
+  }
+  .rack-A {
+    border-left: 6px solid var(--blue);
+  }
+  .rack-B {
+    border-left: 6px solid var(--green);
+  }
+  .rack-C {
+    border-left: 6px solid #1ca3a3;
+  }
+  .rack-D {
+    border-left: 6px solid #3268b1;
+  }
+  @media(max-width: 600px) {
+    .top-bar {
+      flex-direction: column;
+      align-items: stretch;
+    }
+    .top-bar input[type="text"] {
+      flex: none;
+    }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <svg viewBox="0 0 64 64" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg">
+    <rect x="12" y="28" width="40" height="8" rx="4" ry="4" fill="var(--green)" />
+    <rect x="28" y="12" width="8" height="40" rx="4" ry="4" fill="var(--blue)" />
+  </svg>
+  <h1>Smart PHC Medicine Store</h1>
+</header>
+
+<input type="file" id="file-input" accept=".xls,.xlsx" aria-label="Upload Excel file with medicine inventory" />
+
+<div class="top-bar" style="display:none;">
+  <input type="text" id="search-input" placeholder="Search medicines by name..." aria-label="Search medicines" />
+  <button id="export-btn" title="Export Inventory CSV" aria-label="Export inventory to CSV">Export CSV</button>
+</div>
+
+<table id="medicine-table" aria-label="Medicine Inventory Table" style="display:none;">
+  <thead>
+    <tr>
+      <th scope="col">Medicine Name</th>
+      <th scope="col">Expiry Date</th>
+      <th scope="col">Quantity</th>
+      <th scope="col">Rack Code</th>
+      <th scope="col">Reorder Level</th>
+      <th scope="col">Status</th>
+    </tr>
+  </thead>
+  <tbody>
+  </tbody>
+</table>
+
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script>
+  let medicines = [];
+
+  const fileInput = document.getElementById('file-input');
+  const table = document.getElementById('medicine-table');
+  const tbody = table.querySelector('tbody');
+  const searchInput = document.getElementById('search-input');
+  const topBar = document.querySelector('.top-bar');
+  const exportBtn = document.getElementById('export-btn');
+
+  // Utility: format date as yyyy-mm-dd
+  function formatDate(date) {
+    const d = new Date(date);
+    if (isNaN(d)) return '';
+    const month = (d.getMonth() + 1).toString().padStart(2, '0');
+    const day = d.getDate().toString().padStart(2, '0');
+    const year = d.getFullYear();
+    return `${year}-${month}-${day}`;
+  }
+
+  // Check if expiry is within 30 days
+  function isNearExpiry(expiryDate) {
+    const now = new Date();
+    const exp = new Date(expiryDate);
+    const diffDays = (exp - now) / (1000 * 60 * 60 * 24);
+    return diffDays >= 0 && diffDays <= 30;
+  }
+
+  function renderTable(filter = '') {
+    tbody.innerHTML = '';
+
+    const filtered = medicines.filter(med => {
+      return med.name.toLowerCase().includes(filter.toLowerCase());
+    });
+
+    if (filtered.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="6">No medicines found.</td></tr>';
+      return;
+    }
+
+    filtered.forEach(med => {
+      const tr = document.createElement('tr');
+
+      let rowClass = '';
+      if (isNearExpiry(med.expiryDate)) rowClass = 'near-expiry';
+      else if (med.quantity <= med.reorderLevel) rowClass = 'low-stock';
+
+      const rackClass = 'rack-' + med.rackCode.toUpperCase();
+
+      tr.className = `${rowClass} ${rackClass}`;
+
+      const statusText = isNearExpiry(med.expiryDate)
+        ? 'Near Expiry'
+        : med.quantity <= med.reorderLevel
+        ? 'Low Stock'
+        : 'OK';
+
+      tr.innerHTML = `
+        <td>${med.name}</td>
+        <td>${med.expiryDate}</td>
+        <td>${med.quantity}</td>
+        <td>${med.rackCode.toUpperCase()}</td>
+        <td>${med.reorderLevel}</td>
+        <td>${statusText}</td>
+      `;
+
+      tbody.appendChild(tr);
+    });
+  }
+
+  fileInput.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+
+    reader.onload = (evt) => {
+      const data = evt.target.result;
+      let workbook;
+      try {
+        workbook = XLSX.read(data, { type: 'binary' });
+      } catch (error) {
+        alert('Error reading Excel file. Please make sure it is a valid XLS/XLSX file.');
+        return;
+      }
+
+      // Read first sheet
+      const firstSheetName = workbook.SheetNames[0];
+      const worksheet = workbook.Sheets[firstSheetName];
+
+      // Convert sheet to JSON with header keys from first row
+      const jsonData = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
+
+      // Clear medicines
+      medicines = [];
+
+      // Expected keys:
+      // Medicine Name, Expiry Date, Quantity, Rack Code, Reorder Level
+      for (const row of jsonData) {
+        let name = row['Medicine Name'] || row['medicine name'] || row['Name'] || '';
+        let expiryRaw = row['Expiry Date'] || row['expiry date'] || row['Expiry'] || '';
+        let quantityRaw = row['Quantity'] || row['quantity'] || 0;
+        let rackCode = row['Rack Code'] || row['rack code'] || '';
+        let reorderRaw = row['Reorder Level'] || row['reorder level'] || 0;
+
+        if (!name || !expiryRaw || !rackCode) continue; // skip incomplete rows
+
+        // Parse expiry date
+        let expiryDate;
+        if (typeof expiryRaw === 'number') {
+          // Excel date number format
+          expiryDate = XLSX.SSF.format("yyyy-mm-dd", expiryRaw);
+        } else {
+          expiryDate = new Date(expiryRaw).toISOString().slice(0,10);
+        }
+
+        medicines.push({
+          name: name.trim(),
+          expiryDate,
+          quantity: Number(quantityRaw),
+          rackCode: rackCode.trim().toUpperCase(),
+          reorderLevel: Number(reorderRaw)
+        });
+      }
+
+      if (medicines.length === 0) {
+        alert('No valid medicine data found in the Excel file. Please check column headers and data.');
+        return;
+      }
+
+      // Show search & table
+      topBar.style.display = 'flex';
+      table.style.display = 'table';
+
+      renderTable();
+
+      // Clear file input for next upload
+      fileInput.value = '';
+    };
+
+    reader.readAsBinaryString(file);
+  });
+
+  searchInput.addEventListener('input', () => {
+    renderTable(searchInput.value);
+  });
+
+  exportBtn.addEventListener('click', () => {
+    if (medicines.length === 0) {
+      alert('No medicines to export.');
+      return;
+    }
+
+    const csvHeaders = ['Medicine Name', 'Expiry Date', 'Quantity', 'Rack Code', 'Reorder Level'];
+    const csvRows = [csvHeaders.join(',')];
+
+    medicines.forEach(med => {
+      const row = [
+        `"${med.name}"`,
+        med.expiryDate,
+        med.quantity,
+        med.rackCode,
+        med.reorderLevel
+      ];
+      csvRows.push(row.join(','));
+    });
+
+    const csvString = csvRows.join('\n');
+    const blob = new Blob([csvString], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'phc_medicine_inventory.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+  });
+</script>
+
+</body>
+</html>
