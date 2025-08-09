@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Smart PHC Dashboard</title>
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<!-- SheetJS for Excel -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+    margin: 0;
+    padding: 20px;
+  }
+  h2 {
+    color: #00796b;
+  }
+  input, button {
+    padding: 10px;
+    margin: 5px 0;
+    font-size: 1rem;
+  }
+  button {
+    background-color: #00796b;
+    color: white;
+    border: none;
+    cursor: pointer;
+  }
+  button:hover {
+    background-color: #004d40;
+  }
+  #appDiv, #loginDiv, #registerDiv {
+    max-width: 400px;
+    margin: auto;
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+  }
+  #medList {
+    max-height: 300px;
+    overflow-y: auto;
+    background: #e0f2f1;
+    padding: 10px;
+    margin-top: 15px;
+    border-radius: 5px;
+  }
+  .medItem {
+    padding: 5px;
+    border-bottom: 1px solid #00796b;
+  }
+  .alert-expiry {
+    color: red;
+    font-weight: bold;
+  }
+</style>
+</head>
+<body>
+
+<div id="registerDiv">
+  <h2>Register</h2>
+  <input type="email" id="regEmail" placeholder="Email" /><br/>
+  <input type="password" id="regPass" placeholder="Password" /><br/>
+  <button onclick="registerUser()">Register</button>
+  <p>Already have account? <a href="#" onclick="showLogin()">Login here</a></p>
+</div>
+
+<div id="loginDiv" style="display:none;">
+  <h2>Login</h2>
+  <input type="email" id="loginEmail" placeholder="Email" /><br/>
+  <input type="password" id="loginPass" placeholder="Password" /><br/>
+  <button onclick="loginUser()">Login</button>
+  <p>Don't have account? <a href="#" onclick="showRegister()">Register here</a></p>
+</div>
+
+<div id="appDiv" style="display:none;">
+  <h2>Welcome, <span id="userEmail"></span></h2>
+  <button onclick="logoutUser()">Logout</button>
+
+  <h3>Upload Medicine Excel</h3>
+  <input type="file" id="uploadExcel" />
+  <p><small>Excel columns: name, batch, expiry (YYYY-MM-DD), quantity, rack</small></p>
+
+  <h3>Medicine List</h3>
+  <button onclick="fetchMedicines()">Refresh List</button>
+  <div id="medList"></div>
+</div>
+
+<script>
+  // Firebase config
+  const firebaseConfig = {
+    apiKey: "AIzaSyBj_9a5ep2lxKru6yEQqNLHqpSZOm7qi-s",
+    authDomain: "smart-phc-dashboard.firebaseapp.com",
+    projectId: "smart-phc-dashboard",
+    storageBucket: "smart-phc-dashboard.firebasestorage.app",
+    messagingSenderId: "519246980359",
+    appId: "1:519246980359:web:80d2b1dec39076ad2ad1a2",
+    measurementId: "G-QQX4EZK7KP"
+  };
+
+  // Initialize Firebase
+  firebase.initializeApp(firebaseConfig);
+  const auth = firebase.auth();
+  const db = firebase.firestore();
+
+  // Show Register and Login toggles
+  function showRegister() {
+    document.getElementById('registerDiv').style.display = 'block';
+    document.getElementById('loginDiv').style.display = 'none';
+  }
+  function showLogin() {
+    document.getElementById('registerDiv').style.display = 'none';
+    document.getElementById('loginDiv').style.display = 'block';
+  }
+
+  // Register user
+  function registerUser() {
+    const email = document.getElementById('regEmail').value;
+    const pass = document.getElementById('regPass').value;
+    if (!email || !pass) {
+      alert('Please enter email and password');
+      return;
+    }
+    auth.createUserWithEmailAndPassword(email, pass)
+      .then(() => alert('Registration successful. Please login.'))
+      .catch(e => alert('Error: ' + e.message));
+  }
+
+  // Login user
+  function loginUser() {
+    const email = document.getElementById('loginEmail').value;
+    const pass = document.getElementById('loginPass').value;
+    if (!email || !pass) {
+      alert('Please enter email and password');
+      return;
+    }
+    auth.signInWithEmailAndPassword(email, pass)
+      .then(() => alert('Login successful'))
+      .catch(e => alert('Error: ' + e.message));
+  }
+
+  // Logout user
+  function logoutUser() {
+    auth.signOut();
+  }
+
+  // Listen auth state
+  auth.onAuthStateChanged(user => {
+    if (user) {
+      document.getElementById('registerDiv').style.display = 'none';
+      document.getElementById('loginDiv').style.display = 'none';
+      document.getElementById('appDiv').style.display = 'block';
+      document.getElementById('userEmail').textContent = user.email;
+      fetchMedicines();
+    } else {
+      document.getElementById('registerDiv').style.display = 'block';
+      document.getElementById('loginDiv').style.display = 'none';
+      document.getElementById('appDiv').style.display = 'none';
+      clearMedicineList();
+    }
+  });
+
+  // Add medicine data to Firestore
+  function addMedicineData(med) {
+    db.collection('medicines').add(med)
+      .then(() => console.log('Added:', med))
+      .catch(e => alert('Error adding medicine: ' + e.message));
+  }
+
+  // Clear medicine list UI
+  function clearMedicineList() {
+    document.getElementById('medList').innerHTML = '';
+  }
+
+  // Fetch medicines from Firestore
+  function fetchMedicines() {
+    clearMedicineList();
+    db.collection('medicines').get()
+      .then(snapshot => {
+        if (snapshot.empty) {
+          document.getElementById('medList').textContent = 'No medicines found.';
+          return;
+        }
+        snapshot.forEach(doc => {
+          const med = doc.data();
+          const div = document.createElement('div');
+          div.className = 'medItem';
+          // Check expiry within 30 days
+          let expiryDate = new Date(med.expiry);
+          let now = new Date();
+          let diffDays = Math.floor((expiryDate - now) / (1000*60*60*24));
+          let expiryClass = diffDays >=0 && diffDays <=30 ? 'alert-expiry' : '';
+          div.innerHTML = `
+            <strong>${med.name}</strong> (Batch: ${med.batch})<br/>
+            Quantity: ${med.quantity} | Rack: ${med.rack} <br/>
+            Expiry: <span class="${expiryClass}">${med.expiry}</span>
+          `;
+          document.getElementById('medList').appendChild(div);
+        });
+      })
+      .catch(e => alert('Error fetching medicines: ' + e.message));
+  }
+
+  // Excel Upload handler
+  document.getElementById('uploadExcel').addEventListener('change', event => {
+    const file = event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = e => {
+      const data = new Uint8Array(e.target.result);
+      const workbook = XLSX.read(data, {type:'array'});
+      const sheetName = workbook.SheetNames[0];
+      const worksheet = workbook.Sheets[sheetName];
+      const jsonData = XLSX.utils.sheet_to_json(worksheet);
+      jsonData.forEach(med => {
+        // Normalize fields: lower case keys
+        med.name = med.name || med.Name || '';
+        med.batch = med.batch || med.Batch || '';
+        med.expiry = med.expiry || med.Expiry || '';
+        med.quantity = med.quantity || med.Quantity || 0;
+        med.rack = med.rack || med.Rack || '';
+        if (med.name && med.expiry) {
+          addMedicineData(med);
+        }
+      });
+      alert('Upload complete!');
+      fetchMedicines();
+    };
+    reader.readAsArrayBuffer(file);
+  });
+
+</script>
+
+</body>
+</html>
