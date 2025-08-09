@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Smart PHC Dashboard</title>
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <!-- SheetJS for Excel -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+</head>
+<body>
+
+<h2>Smart PHC Dashboard</h2>
+
+<div id="authDiv">
+  <h3>Register</h3>
+  <input type="email" id="regEmail" placeholder="Email" /><br/>
+  <input type="password" id="regPass" placeholder="Password" /><br/>
+  <button onclick="registerUser()">Register</button>
+
+  <h3>Login</h3>
+  <input type="email" id="loginEmail" placeholder="Email" /><br/>
+  <input type="password" id="loginPass" placeholder="Password" /><br/>
+  <button onclick="loginUser()">Login</button>
+</div>
+
+<div id="appDiv" style="display:none;">
+  <button onclick="logoutUser()">Logout</button>
+  <h3>Upload Medicine Excel</h3>
+  <input type="file" id="uploadExcel" />
+  <button onclick="fetchMedicines()">Fetch Medicines</button>
+  <div id="medList"></div>
+</div>
+
+<script>
+  // Firebase config
+  const firebaseConfig = {
+    apiKey: "AIzaSyBj_9a5ep2lxKru6yEQqNLHqpSZOm7qi-s",
+    authDomain: "smart-phc-dashboard.firebaseapp.com",
+    projectId: "smart-phc-dashboard",
+    storageBucket: "smart-phc-dashboard.firebasestorage.app",
+    messagingSenderId: "519246980359",
+    appId: "1:519246980359:web:80d2b1dec39076ad2ad1a2",
+    measurementId: "G-QQX4EZK7KP"
+  };
+
+  // Initialize Firebase
+  firebase.initializeApp(firebaseConfig);
+  const auth = firebase.auth();
+  const db = firebase.firestore();
+
+  // Register user
+  function registerUser() {
+    const email = document.getElementById('regEmail').value;
+    const pass = document.getElementById('regPass').value;
+    auth.createUserWithEmailAndPassword(email, pass)
+      .then(() => alert('Registration successful'))
+      .catch(e => alert(e.message));
+  }
+
+  // Login user
+  function loginUser() {
+    const email = document.getElementById('loginEmail').value;
+    const pass = document.getElementById('loginPass').value;
+    auth.signInWithEmailAndPassword(email, pass)
+      .then(() => alert('Login successful'))
+      .catch(e => alert(e.message));
+  }
+
+  // Logout user
+  function logoutUser() {
+    auth.signOut();
+  }
+
+  // Auth state listener
+  auth.onAuthStateChanged(user => {
+    if (user) {
+      document.getElementById('authDiv').style.display = 'none';
+      document.getElementById('appDiv').style.display = 'block';
+      console.log('User logged in:', user.email);
+    } else {
+      document.getElementById('authDiv').style.display = 'block';
+      document.getElementById('appDiv').style.display = 'none';
+      console.log('No user logged in');
+    }
+  });
+
+  // Add medicine to Firestore
+  function addMedicineData(med) {
+    db.collection('medicines').add(med)
+      .then(() => console.log('Medicine added:', med))
+      .catch(e => alert('Error adding medicine: ' + e.message));
+  }
+
+  // Handle Excel upload
+  document.getElementById('uploadExcel').addEventListener('change', event => {
+    const file = event.target.files[0];
+    const reader = new FileReader();
+    reader.onload = e => {
+      const data = new Uint8Array(e.target.result);
+      const workbook = XLSX.read(data, {type: 'array'});
+      const firstSheet = workbook.SheetNames[0];
+      const worksheet = workbook.Sheets[firstSheet];
+      const jsonData = XLSX.utils.sheet_to_json(worksheet);
+      jsonData.forEach(med => addMedicineData(med));
+      alert('Upload complete. Check console for details.');
+    };
+    reader.readAsArrayBuffer(file);
+  });
+
+  // Fetch medicines from Firestore
+  function fetchMedicines() {
+    db.collection('medicines').get()
+      .then(snapshot => {
+        const listDiv = document.getElementById('medList');
+        listDiv.innerHTML = '';
+        snapshot.forEach(doc => {
+          const med = doc.data();
+          const div = document.createElement('div');
+          div.textContent = JSON.stringify(med);
+          listDiv.appendChild(div);
+        });
+      })
+      .catch(e => alert('Error fetching medicines: ' + e.message));
+  }
+</script>
+
+</body>
+</html>
