@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Smart PHC Medicine Store Dashboard</title>
+<!-- Blue-Green theme -->
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Roboto&display=swap');
+  body {
+    margin: 0; font-family: 'Roboto', sans-serif; background: #f0f8f8; color: #02475e;
+  }
+  header {
+    background: linear-gradient(90deg, #00796b, #004d40);
+    color: white;
+    padding: 15px 25px;
+    font-size: 1.6em;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  header img {
+    height: 36px;
+  }
+  .container {
+    max-width: 1100px;
+    margin: 20px auto;
+    padding: 0 15px;
+  }
+  /* Tabs */
+  .tabs {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 15px;
+  }
+  .tab-btn {
+    background: #00796b;
+    color: white;
+    border: none;
+    padding: 10px 18px;
+    cursor: pointer;
+    border-radius: 4px;
+    font-weight: 600;
+    flex: 1 1 auto;
+    min-width: 100px;
+    transition: background 0.3s;
+  }
+  .tab-btn.active, .tab-btn:hover {
+    background: #004d40;
+  }
+
+  /* Upload area */
+  .upload-section {
+    margin-bottom: 15px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 15px;
+  }
+  input[type="file"] {
+    padding: 6px;
+    border-radius: 4px;
+    border: 1.5px solid #00796b;
+    cursor: pointer;
+  }
+  button.action-btn {
+    background: #004d40;
+    color: #fff;
+    border: none;
+    padding: 9px 18px;
+    cursor: pointer;
+    border-radius: 4px;
+    font-weight: 600;
+    transition: background 0.3s;
+  }
+  button.action-btn:hover {
+    background: #00796b;
+  }
+  
+  /* Table styles */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+  }
+  th, td {
+    border: 1.5px solid #00796b;
+    padding: 8px 10px;
+    text-align: left;
+    font-size: 0.9em;
+  }
+  th {
+    background: #004d40;
+    color: white;
+    position: sticky;
+    top: 0;
+    z-index: 2;
+  }
+  tbody tr:nth-child(even) {
+    background: #e0f2f1;
+  }
+  
+  /* Highlights */
+  .near-expiry {
+    background-color: #ffeb3b88; /* Yellow highlight */
+  }
+  .low-stock {
+    background-color: #ff704388; /* Red-ish highlight */
+  }
+
+  /* Search input */
+  #searchInput {
+    padding: 8px;
+    border: 1.5px solid #00796b;
+    border-radius: 4px;
+    width: 100%;
+    max-width: 350px;
+    margin-bottom: 8px;
+  }
+
+  /* Responsive */
+  @media (max-width: 600px) {
+    .tab-btn {
+      flex: 1 1 45%;
+      font-size: 0.9em;
+    }
+    table, thead, tbody, th, td, tr {
+      display: block;
+    }
+    th {
+      position: relative;
+      padding-left: 50%;
+    }
+    th::before {
+      position: absolute;
+      top: 50%;
+      left: 8px;
+      transform: translateY(-50%);
+      font-weight: 700;
+      white-space: nowrap;
+      content: attr(data-label);
+      color: #004d40;
+    }
+    td {
+      padding-left: 50%;
+      position: relative;
+      border: none;
+      border-bottom: 1px solid #00796b;
+      white-space: pre-wrap;
+    }
+    td::before {
+      position: absolute;
+      top: 50%;
+      left: 8px;
+      transform: translateY(-50%);
+      font-weight: 600;
+      white-space: nowrap;
+      content: attr(data-label);
+      color: #004d40;
+    }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <img src="https://img.icons8.com/ios-filled/50/ffffff/pills.png" alt="Medicine Logo" />
+  Smart PHC Medicine Store Dashboard
+</header>
+
+<div class="container">
+
+  <div class="upload-section">
+    <label for="fileUpload" style="font-weight:600;">Upload Medicine Stock Excel:</label>
+    <input type="file" id="fileUpload" accept=".xlsx,.xls,.csv" />
+    <button class="action-btn" id="exportExcelBtn" title="Export current view as Excel">Export Excel</button>
+    <button class="action-btn" id="exportPdfBtn" title="Export current view as PDF">Export PDF</button>
+    <button class="action-btn" id="qrScanBtn" title="Open QR Code Scanner">Scan QR Code</button>
+  </div>
+
+  <div class="tabs" id="tabs">
+    <button class="tab-btn active" data-tab="all">All Medicines</button>
+    <button class="tab-btn" data-tab="rack">Rack-wise View</button>
+    <button class="tab-btn" data-tab="color">Color-coded Racks</button>
+    <button class="tab-btn" data-tab="expiry">Expiry Alerts</button>
+    <button class="tab-btn" data-tab="lowstock">Low Stock Alerts</button>
+    <button class="tab-btn" data-tab="search">Search</button>
+  </div>
+
+  <div id="tabContents">
+
+    <div class="tab-content" id="tab-all">
+      <table id="tableAll" aria-label="All Medicines Table">
+        <thead>
+          <tr>
+            <th>Medicine Name</th>
+            <th>Quantity</th>
+            <th>Expiry Date</th>
+            <th>Rack Code</th>
+            <th>Color Code</th>
+            <th>Reorder Level</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+
+    <div class="tab-content" id="tab-rack" style="display:none;">
+      <table id="tableRack" aria-label="Rack-wise Medicines Table">
+        <thead>
+          <tr>
+            <th>Rack Code</th>
+            <th>Medicine Name</th>
+            <th>Quantity</th>
+            <th>Expiry Date</th>
+            <th>Color Code</th>
+            <th>Reorder Level</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+
+    <div class="tab-content" id="tab-color" style="display:none;">
+      <table id="tableColor" aria-label="Color-coded Racks Medicines Table">
+        <thead>
+          <tr>
+            <th>Color Code</th>
+            <th>Medicine Name</th>
+            <th>Quantity</th>
+            <th>Expiry Date</th>
+            <th>Rack Code</th>
+            <th>Reorder Level</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+
+    <div class="tab-content" id="tab-expiry" style="display:none;">
+      <table id="tableExpiry" aria-label="Near Expiry Medicines Table">
+        <thead>
+          <tr>
+            <th>Medicine Name</th>
+            <th>Quantity</th>
+            <th>Expiry Date</th>
+            <th>Rack Code</th>
+            <th>Color Code</th>
+            <th>Reorder Level</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+
+    <div class="tab-content" id="tab-lowstock" style="display:none;">
+      <table id="tableLowStock" aria-label="Low Stock Medicines Table">
+        <thead>
+          <tr>
+            <th>Medicine Name</th>
+            <th>Quantity</th>
+            <th>Reorder Level</th>
+            <th>Expiry Date</th>
+            <th>Rack Code</th>
+            <th>Color Code</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+
+    <div class="tab-content" id="tab-search" style="display:none;">
+      <input type="text" id="searchInput" placeholder="Search medicine by name..." aria-label="Search medicines" />
+      <table id="tableSearch" aria-label="Search Results Table">
+        <thead>
+          <tr>
+            <th>Medicine Name</th>
+            <th>Quantity</th>
+            <th>Expiry Date</th>
+            <th>Rack Code</th>
+            <th>Color Code</th>
+            <th>Reorder Level</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+
+  </div>
+
+</div>
+
+<!-- Libraries -->
+<script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+<script>
+(() => {
+  // Globals
+  let medicines = []; // All medicine objects
+  const nearExpiryDays = 30;
+
+  // Elements
+  const tabs = document.querySelectorAll('.tab-btn');
+  const tabContents = document.querySelectorAll('.tab-content');
+  const fileUpload = document.getElementById('fileUpload');
+  const exportExcelBtn = document.getElementById('exportExcelBtn');
+  const exportPdfBtn = document.getElementById('exportPdfBtn');
+  const qrScanBtn = document.getElementById('qrScanBtn');
+  const searchInput = document.getElementById('searchInput');
+
+  // Helper: Parse date string to Date object (yyyy-mm-dd or dd/mm/yyyy)
+  function parseDate(dateStr) {
+    if (!dateStr) return null;
+    if (dateStr instanceof Date) return dateStr;
+    // Try ISO format first
+    let d = new Date(dateStr);
+    if (!isNaN(d)) return d;
+    // Try dd/mm/yyyy
+    const parts = dateStr.split(/[\/\-\.]/);
+    if(parts.length === 3) {
+      let [d1, m1, y1] = parts;
+      if(y1.length === 4) {
+        return new Date(y1, m1 - 1, d1);
+      }
+    }
+    return null;
+  }
+
+  // Highlight checkers
+  function isNearExpiry(expiryDate) {
+    if (!expiryDate) return false;
+    const today = new Date();
+    const diff = (expiryDate - today)/(1000*3600*24);
+    return diff >= 0 && diff <= nearExpiryDays;
+  }
+  function isExpired(expiryDate) {
+    if (!expiryDate) return false;
+    return expiryDate < new Date();
+  }
+  function isLowStock(qty, reorder) {
+    return qty < reorder;
+  }
+
+  // Render Tables
+  function renderTable(tableBody, data, highlightFn = null, groupBy = null) {
+    tableBody.innerHTML = '';
+    if (groupBy) {
+      // Group by groupBy field, render with group headings
+      const groups = {};
+      data.forEach(item => {
+        const key = item[groupBy] || 'N/A';
+        if (!groups[key]) groups[key] = [];
+        groups[key].push(item);
+      });
+      for (const grp in groups) {
+        const groupRow = document.createElement('tr');
+        const td = document.createElement('td');
+        td.colSpan = Object.keys(data[0]).length || 6;
+        td.style.fontWeight = '700';
+        td.style.backgroundColor = '#b2dfdb';
+        td.textContent = grp;
+        groupRow.appendChild(td);
+        tableBody.appendChild(groupRow);
+        groups[grp].forEach(item => {
+          const tr = document.createElement('tr');
+          for (const key in item) {
+            const td = document.createElement('td');
+            td.textContent = item[key];
+            if (highlightFn && highlightFn(item)) {
+              tr.classList.add(highlightFn(item));
+            }
+            tr.appendChild(td);
+          }
+          tableBody.appendChild(tr);
+        });
+      }
+    } else {
+      data.forEach(item => {
+        const tr = document.createElement('tr');
+        for (const key in item) {
+          const td = document.createElement('td');
+          td.textContent = item[key];
+          tr.appendChild(td);
+        }
+        if (highlightFn && highlightFn(item)) {
+          tr.classList.add(highlightFn(item));
+        }
+        tableBody.appendChild(tr);
+      });
+    }
+  }
+
+  // Render all tabs
+  function renderAll() {
+    if (!medicines.length) return;
+
+    // All Medicines
+    const allBody = document.querySelector('#tableAll tbody');
+    renderTable(allBody, medicines, item => {
+      if (isNearExpiry(parseDate(item['Expiry Date']))) return 'near-expiry';
+      if (isLowStock(Number(item.Quantity), Number(item['Reorder Level']))) return 'low-stock';
+      return null;
+    });
+
+    // Rack-wise sorted by Rack Code
+    const rackBody = document.querySelector('#tableRack tbody');
+    // Sort by Rack Code
+    const sortedByRack = [...medicines].sort((a,b) => {
+      if(a['Rack Code'] < b['Rack Code']) return -1;
+      if(a['Rack Code'] > b['Rack Code']) return 1;
+      return 0;
+    });
+    // Rearrange for rack view keys order: Rack Code, Medicine Name, Quantity, Expiry Date, Color Code, Reorder Level
+    const rackData = sortedByRack.map(m => ({
+      'Rack Code': m['Rack Code'],
+      'Medicine Name': m['Medicine Name'],
+      Quantity: m.Quantity,
+      'Expiry Date': m['Expiry Date'],
+      'Color Code': m['Color Code'],
+      'Reorder Level': m['Reorder Level']
+    }));
+    renderTable(rackBody, rackData);
+
+    // Color-coded racks view grouped by Color Code
+    const colorBody = document.querySelector('#tableColor tbody');
+    const colorData = medicines.map(m => ({
+      'Color Code': m['Color Code'],
+      'Medicine Name': m['Medicine Name'],
+      Quantity: m.Quantity,
+      'Expiry Date': m['Expiry Date'],
+      'Rack Code': m['Rack Code'],
+      'Reorder Level': m['Reorder Level']
+    }));
+    renderTable(colorBody, colorData, null, 'Color Code');
+
+    // Expiry alerts: only near expiry
+    const expiryBody = document.querySelector('#tableExpiry tbody');
+    const nearExpiryData = medicines.filter(m => isNearExpiry(parseDate(m['Expiry Date'])));
+    renderTable(expiryBody, nearExpiryData);
+
+    // Low stock alerts
+    const lowStockBody = document.querySelector('#tableLowStock tbody');
+    const lowStockData = medicines.filter(m => isLowStock(Number(m.Quantity), Number(m['Reorder Level'])));
+    renderTable(lowStockBody, lowStockData);
+
+    // Search tab (initially show all)
+    const searchBody = document.querySelector('#tableSearch tbody');
+    renderTable(searchBody, medicines);
+  }
+
+  // Search filter for search tab
+  function filterSearch(query) {
+    const searchBody = document.querySelector('#tableSearch tbody');
+    const q = query.toLowerCase();
+    const filtered = medicines.filter(m => m['Medicine Name'].toLowerCase().includes(q));
+    renderTable(searchBody, filtered);
+  }
+
+  // Handle file upload and parsing
+  fileUpload.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return alert('Please select an Excel file.');
+
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      const data = new Uint8Array(evt.target.result);
+      const workbook = XLSX.read(data, {type: 'array'});
+      const firstSheet = workbook.SheetNames[0];
+      const worksheet = workbook.Sheets[firstSheet];
+      const jsonData = XLSX.utils.sheet_to_json(worksheet, {defval: ''});
+      
+      // Validate & normalize data keys
+      medicines = jsonData.map(row => ({
+        'Medicine Name': row['Medicine Name'] || row['medicine name'] || '',
+        Quantity: Number(row['Quantity'] || row['quantity'] || 0),
+        'Expiry Date': (() => {
+          const d = row['Expiry Date'] || row['expiry date'] || '';
+          // Format date to yyyy-mm-dd for consistency
+          const dt = parseDate(d);
+          if(dt) return dt.toISOString().split('T')[0];
+          return '';
+        })(),
+        'Rack Code': row['Rack Code'] || row['rack code'] || '',
+        'Color Code': row['Color Code'] || row['color code'] || '',
+        'Reorder Level': Number(row['Reorder Level'] || row['reorder level'] || 0)
+      }));
+
+      renderAll();
+      alert('Excel data uploaded and dashboard updated.');
+      // Clear file input to allow re-upload of same file if needed
+      fileUpload.value = '';
+    };
+    reader.readAsArrayBuffer(file);
+  });
+
+  // Tab switching
+  tabs.forEach(btn => {
+    btn.addEventListener('click', () => {
+      tabs.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      const tab = btn.getAttribute('data-tab');
+      tabContents.for
