@@ -1,140 +1,134 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Smart PHC Medicine Store Simple Firebase</title>
-<style>
-  body { font-family: Arial, sans-serif; background:#e0f7f1; padding:20px; }
-  #login-section, #medicine-section { margin-bottom: 25px; }
-  input, button { padding: 8px; margin: 5px 0; width: 100%; max-width: 300px; }
-  #medicine-list div { background:#b0dfd4; padding:10px; margin:5px 0; border-radius:4px; }
-</style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Simple PHC Firebase Demo</title>
 </head>
 <body>
 
-<h2>Smart PHC Medicine Store</h2>
+  <h1>PHC Medicine Store</h1>
 
-<div id="login-section">
-  <button onclick="oneClickLogin()">Login with One Click (Anonymous)</button>
-</div>
+  <div id="loginDiv">
+    <button id="loginBtn">One Click Login</button>
+  </div>
 
-<div id="medicine-section" style="display:none;">
-  <h3>Add Medicine</h3>
-  <input id="med-name" placeholder="Medicine Name" /><br/>
-  <input id="med-qty" type="number" placeholder="Quantity" /><br/>
-  <input id="med-expiry" type="date" placeholder="Expiry Date" /><br/>
-  <input id="med-rack" placeholder="Rack (e.g. A-1)" /><br/>
-  <button onclick="addMedicine()">Add Medicine</button>
+  <div id="appDiv" style="display:none;">
+    <h2>Welcome to Medicine Store</h2>
 
-  <h3>Medicine List</h3>
-  <div id="medicine-list"></div>
+    <label>Medicine Name: <input type="text" id="medName" /></label><br/>
+    <label>Quantity: <input type="number" id="medQty" /></label><br/>
+    <label>Expiry Date: <input type="date" id="medExpiry" /></label><br/>
+    <label>Rack: <input type="text" id="medRack" /></label><br/>
+    <button id="addMedBtn">Add Medicine</button>
 
-  <button onclick="logout()">Logout</button>
-</div>
+    <h3>Medicines:</h3>
+    <ul id="medicineList"></ul>
 
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js"></script>
+    <button id="logoutBtn">Logout</button>
+  </div>
 
-<script>
-  const firebaseConfig = {
-    apiKey: "AIzaSyBj_9a5ep2lxKru6yEQqNLHqpSZOm7qi-s",
-    authDomain: "smart-phc-dashboard.firebaseapp.com",
-    projectId: "smart-phc-dashboard",
-    storageBucket: "smart-phc-dashboard.firebasestorage.app",
-    messagingSenderId: "519246980359",
-    appId: "1:519246980359:web:80d2b1dec39076ad2ad1a2"
-  };
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js"></script>
 
-  firebase.initializeApp(firebaseConfig);
-  const auth = firebase.auth();
-  const db = firebase.firestore();
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyBj_9a5ep2lxKru6yEQqNLHqpSZOm7qi-s",
+      authDomain: "smart-phc-dashboard.firebaseapp.com",
+      projectId: "smart-phc-dashboard",
+      storageBucket: "smart-phc-dashboard.firebasestorage.app",
+      messagingSenderId: "519246980359",
+      appId: "1:519246980359:web:80d2b1dec39076ad2ad1a2"
+    };
 
-  function oneClickLogin() {
-    auth.signInAnonymously()
-      .then(() => {
-        alert("Logged in anonymously!");
-      })
-      .catch(e => alert("Login error: " + e.message));
-  }
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
 
-  function logout() {
-    auth.signOut();
-  }
+    const loginBtn = document.getElementById("loginBtn");
+    const logoutBtn = document.getElementById("logoutBtn");
+    const addMedBtn = document.getElementById("addMedBtn");
+    const loginDiv = document.getElementById("loginDiv");
+    const appDiv = document.getElementById("appDiv");
+    const medicineList = document.getElementById("medicineList");
 
-  auth.onAuthStateChanged(user => {
-    if(user) {
-      document.getElementById("login-section").style.display = "none";
-      document.getElementById("medicine-section").style.display = "block";
-      showMedicines();
-    } else {
-      document.getElementById("login-section").style.display = "block";
-      document.getElementById("medicine-section").style.display = "none";
-      document.getElementById("medicine-list").innerHTML = "";
-    }
-  });
-
-  function addMedicine() {
-    const name = document.getElementById("med-name").value.trim();
-    const qty = Number(document.getElementById("med-qty").value);
-    const expiry = document.getElementById("med-expiry").value;
-    const rack = document.getElementById("med-rack").value.trim();
-
-    if(!name || !qty || !expiry || !rack) {
-      alert("सर्व माहिती भरा!");
-      return;
-    }
-
-    db.collection("medicines").add({
-      userId: auth.currentUser.uid,
-      name: name,
-      quantity: qty,
-      expiryDate: expiry,
-      rack: rack,
-      createdAt: firebase.firestore.FieldValue.serverTimestamp()
-    })
-    .then(() => {
-      alert("औषध यशस्वीरीत्या जोडले!");
-      clearForm();
-      showMedicines();
-    })
-    .catch(e => alert("Error adding medicine: " + e.message));
-  }
-
-  function clearForm() {
-    document.getElementById("med-name").value = "";
-    document.getElementById("med-qty").value = "";
-    document.getElementById("med-expiry").value = "";
-    document.getElementById("med-rack").value = "";
-  }
-
-  function showMedicines() {
-    const list = document.getElementById("medicine-list");
-    list.innerHTML = "";
-
-    db.collection("medicines")
-      .where("userId", "==", auth.currentUser.uid)
-      .orderBy("createdAt", "desc")
-      .get()
-      .then(snapshot => {
-        if(snapshot.empty) {
-          list.textContent = "कोणतीही औषधे सध्या नाहीत.";
-          return;
-        }
-        snapshot.forEach(doc => {
-          const med = doc.data();
-          const div = document.createElement("div");
-          div.textContent = `${med.name} | Qty: ${med.quantity} | Expiry: ${med.expiryDate} | Rack: ${med.rack}`;
-          list.appendChild(div);
+    // Show medicines function
+    function loadMedicines() {
+      medicineList.innerHTML = "";
+      db.collection("medicines")
+        .where("userId", "==", auth.currentUser.uid)
+        .orderBy("createdAt", "desc")
+        .get()
+        .then(snapshot => {
+          if (snapshot.empty) {
+            medicineList.innerHTML = "<li>No medicines found.</li>";
+            return;
+          }
+          snapshot.forEach(doc => {
+            const med = doc.data();
+            const li = document.createElement("li");
+            li.textContent = `${med.name} | Qty: ${med.quantity} | Expiry: ${med.expiryDate} | Rack: ${med.rack}`;
+            medicineList.appendChild(li);
+          });
+        })
+        .catch(err => {
+          medicineList.innerHTML = "<li>Error loading medicines.</li>";
+          console.error(err);
         });
+    }
+
+    loginBtn.onclick = () => {
+      auth.signInAnonymously()
+        .catch(e => alert("Login error: " + e.message));
+    };
+
+    logoutBtn.onclick = () => {
+      auth.signOut();
+    };
+
+    addMedBtn.onclick = () => {
+      const name = document.getElementById("medName").value.trim();
+      const qty = Number(document.getElementById("medQty").value);
+      const expiry = document.getElementById("medExpiry").value;
+      const rack = document.getElementById("medRack").value.trim();
+
+      if (!name || !qty || !expiry || !rack) {
+        alert("सर्व माहिती भरा!");
+        return;
+      }
+
+      db.collection("medicines").add({
+        userId: auth.currentUser.uid,
+        name: name,
+        quantity: qty,
+        expiryDate: expiry,
+        rack: rack,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
       })
-      .catch(e => {
-        list.textContent = "डेटा आणताना त्रुटी झाली.";
-        console.error(e);
-      });
-  }
-</script>
+      .then(() => {
+        alert("औषध यशस्वीरीत्या जोडले!");
+        document.getElementById("medName").value = "";
+        document.getElementById("medQty").value = "";
+        document.getElementById("medExpiry").value = "";
+        document.getElementById("medRack").value = "";
+        loadMedicines();
+      })
+      .catch(e => alert("Error adding medicine: " + e.message));
+    };
+
+    auth.onAuthStateChanged(user => {
+      if (user) {
+        loginDiv.style.display = "none";
+        appDiv.style.display = "block";
+        loadMedicines();
+      } else {
+        loginDiv.style.display = "block";
+        appDiv.style.display = "none";
+        medicineList.innerHTML = "";
+      }
+    });
+  </script>
 
 </body>
-</html>
+  </html>
