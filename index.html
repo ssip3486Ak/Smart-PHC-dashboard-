@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Smart PHC Medicine Dashboard</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #fdfdfd;
+      max-width: 900px;
+      margin: 20px auto;
+      padding: 20px;
+      box-shadow: 0 0 12px rgba(0,0,0,0.1);
+      border-radius: 10px;
+      color: #2c3e50;
+    }
+    h1 {
+      text-align: center;
+      margin-bottom: 25px;
+    }
+    .filters {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+      justify-content: space-between;
+    }
+    input[type="text"], select {
+      padding: 8px;
+      font-size: 16px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+      flex: 1;
+    }
+    select {
+      flex: 0 0 150px;
+    }
+    button {
+      padding: 8px 15px;
+      font-size: 16px;
+      color: white;
+      background-color: #27ae60;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      flex: 0 0 140px;
+    }
+    button.stop {
+      background-color: #e74c3c;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 16px;
+    }
+    th, td {
+      padding: 10px;
+      border-bottom: 1px solid #ddd;
+      text-align: left;
+    }
+    tr.near-expiry {
+      background-color: #f9c2c2;
+    }
+    #qr-reader {
+      margin: 20px auto;
+      width: 300px;
+    }
+    #no-meds {
+      text-align: center;
+      padding: 15px;
+      color: #888;
+    }
+  </style>
+  <!-- Include html5-qrcode library -->
+  <script src="https://unpkg.com/html5-qrcode@2.3.7/minified/html5-qrcode.min.js"></script>
+</head>
+<body>
+
+  <h1>Smart PHC Medicine Dashboard</h1>
+
+  <div class="filters">
+    <input type="text" id="search" placeholder="Search medicine..." />
+    <select id="rackFilter">
+      <option value="">All Racks</option>
+    </select>
+    <button id="toggleScan">Start QR Scan</button>
+  </div>
+
+  <div id="qr-reader" style="display:none;"></div>
+
+  <table id="medTable">
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Batch No</th>
+        <th>Expiry Date</th>
+        <th>Quantity</th>
+        <th>Rack</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <div id="no-meds" style="display:none;">No medicines found.</div>
+
+<script>
+  const medicines = [
+    { id:1, name:"Paracetamol", batch:"B123", expiryDate:"2025-09-05", quantity:50, rack:"A1" },
+    { id:2, name:"Amoxicillin", batch:"B234", expiryDate:"2025-08-25", quantity:10, rack:"B2" },
+    { id:3, name:"Amlodipine", batch:"B345", expiryDate:"2025-07-25", quantity:30, rack:"A1" },
+    { id:4, name:"Metformin", batch:"B456", expiryDate:"2025-09-30", quantity:60, rack:"C3" }
+  ];
+
+  const today = new Date();
+
+  function isNearExpiry(dateStr) {
+    const expiry = new Date(dateStr);
+    const diffDays = (expiry - today) / (1000*3600*24);
+    return diffDays <= 30 && diffDays >= 0;
+  }
+
+  const rackFilter = document.getElementById('rackFilter');
+  const searchInput = document.getElementById('search');
+  const medTableBody = document.querySelector('#medTable tbody');
+  const noMedsDiv = document.getElementById('no-meds');
+  const toggleScanBtn = document.getElementById('toggleScan');
+  const qrReaderDiv = document.getElementById('qr-reader');
+
+  // Populate rack filter options
+  function populateRackFilter() {
+    const racks = [...new Set(medicines.map(m => m.rack))].sort();
+    racks.forEach(rack => {
+      const option = document.createElement('option');
+      option.value = rack;
+      option.textContent = `Rack ${rack}`;
+      rackFilter.appendChild(option);
+    });
+  }
+
+  function renderMedicines() {
+    const searchTerm = searchInput.value.trim().toLowerCase();
+    const selectedRack = rackFilter.value;
+
+    let filtered = medicines.filter(m => {
+      const matchesRack = selectedRack ? m.rack === selectedRack : true;
+      const matchesSearch = m.name.toLowerCase().includes(searchTerm);
+      return matchesRack && matchesSearch;
+    });
+
+    medTableBody.innerHTML = '';
+
+    if (filtered.length === 0) {
+      noMedsDiv.style.display = 'block';
+      return;
+    } else {
+      noMedsDiv.style.display = 'none';
+    }
+
+    filtered.forEach(med => {
+      const tr = document.createElement('tr');
+      if (isNearExpiry(med.expiryDate)) {
+        tr.classList.add('near-expiry');
+        tr.title = "Near expiry within 30 days";
+      }
+
+      tr.innerHTML = `
+        <td>${med.name}</td>
+        <td>${med.batch}</td>
+        <td>${med.expiryDate}</td>
+        <td>${med.quantity}</td>
+        <td>${med.rack}</td>
+      `;
+      medTableBody.appendChild(tr);
+    });
+  }
+
+  // Initialize rack filter options and render table
+  populateRackFilter();
+  renderMedicines();
+
+  // Add event listeners
+  searchInput.addEventListener('input', renderMedicines);
+  rackFilter.addEventListener('change', renderMedicines);
+
+  // QR code scanner logic
+  let scanner = null;
+  let scanning = false;
+
+  toggleScanBtn.addEventListener('click', () => {
+    if (!scanning) {
+      qrReaderDiv.style.display = 'block';
+      toggleScanBtn.textContent = 'Stop QR Scan';
+      toggleScanBtn.classList.add('stop');
+
+      scanner = new Html5Qrcode("qr-reader");
+      scanner.start(
+        { facingMode: "environment" },
+        {
+          fps: 10,
+          qrbox: 250
+        },
+        (decodedText) => {
+          alert(`Scanned QR Code: ${decodedText}`);
+          stopScanner();
+        },
+        (errorMessage) => {
+          // console.log('QR scan error:', errorMessage);
+        }
+      ).catch(err => {
+        alert("Error starting QR scanner: " + err);
+        stopScanner();
+      });
+
+      scanning = true;
+    } else {
+      stopScanner();
+    }
+  });
+
+  function stopScanner() {
+    if (scanner) {
+      scanner.stop().then(() => {
+        scanner.clear();
+      }).catch(() => {});
+    }
+    scanning = false;
+    toggleScanBtn.textContent = 'Start QR Scan';
+    toggleScanBtn.classList.remove('stop');
+    qrReaderDiv.style.display = 'none';
+  }
+</script>
+
+</body>
+</html>
