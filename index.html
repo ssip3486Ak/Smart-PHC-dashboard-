@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Smart PHC Dashboard</title>
+
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<!-- SheetJS for Excel -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+<style>
+  body {
+    font-family: 'Segoe UI', Arial, sans-serif;
+    background: linear-gradient(135deg, #4facfe, #00f2fe);
+    margin: 0;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  h2, h3 {
+    color: #333;
+    text-align: center;
+    margin: 0 0 20px 0;
+  }
+  .container {
+    background: white;
+    padding: 30px;
+    border-radius: 12px;
+    width: 350px;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.08);
+    animation: fadeIn 0.6s forwards;
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .field {
+    position: relative;
+    margin-bottom: 20px;
+  }
+  .field input {
+    width: 100%;
+    padding: 14px 10px 10px 10px;
+    border: 2px solid #ccc;
+    border-radius: 5px;
+    font-size: 1.05rem;
+    outline: none;
+    background: transparent;
+    transition: 0.3s;
+  }
+  .field label {
+    position: absolute;
+    left: 14px;
+    top: 14px;
+    color: #888;
+    background: white;
+    padding: 0 4px;
+    pointer-events: none;
+    font-size: 1.05rem;
+    transition: 0.3s;
+  }
+  .field input:focus,
+  .field input:not(:placeholder-shown) {
+    border-color: #4facfe;
+  }
+  .field input:focus + label,
+  .field input:not(:placeholder-shown) + label {
+    top: -9px;
+    left: 8px;
+    font-size: 0.85rem;
+    color: #4facfe;
+  }
+  button {
+    width: 100%;
+    padding: 12px;
+    background: linear-gradient(90deg, #4facfe, #00f2fe);
+    border: none;
+    border-radius: 6px;
+    color: white;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: box-shadow 0.2s, transform 0.2s;
+  }
+  button:hover {
+    box-shadow: 0 4px 12px #4facfe44;
+    transform: translateY(-1px);
+  }
+  .link {
+    text-align: center;
+    margin-top: 11px;
+    font-size: 0.97rem;
+  }
+  .link a {
+    color: #4facfe;
+    font-weight: 600;
+    text-decoration: none;
+  }
+  .link a:hover { text-decoration: underline; }
+
+  #appDiv {
+    max-width: 830px;
+    min-width: 360px;
+    width: 100%;
+    padding: 26px;
+    border-radius: 13px;
+    background: white;
+    box-shadow: 0 8px 28px rgba(0,0,0,0.14);
+    animation: fadeIn 0.7s;
+    display: none;
+  }
+  .tab-buttons {
+    margin: 10px 0 20px 0;
+    text-align: center;
+  }
+  .tab-buttons button {
+    width: auto !important;
+    padding: 8px 23px;
+    margin-right: 10px;
+    border-radius: 5px;
+    font-weight: 600;
+    background: #e3f2fd;
+    color: #1565c0;
+    border: none;
+    box-shadow: none;
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s;
+  }
+  .tab-buttons button.active {
+    background: linear-gradient(90deg, #4facfe, #00f2fe);
+    color: white;
+    box-shadow: 0 3px 15px #4facfe24;
+  }
+  .tab-buttons button:last-child { margin-right: 0; }
+
+  #medList {
+    margin-top: 10px;
+    max-height: 320px;
+    overflow-y: auto;
+    animation: fadeIn 0.3s;
+  }
+  .medItem {
+    padding: 14px;
+    border-left: 5px solid #4facfe;
+    background: #f7fafb;
+    border-radius: 6px;
+    margin-bottom: 11px;
+    font-size: 1.04rem;
+    position: relative;
+    transition: box-shadow 0.2s, transform 0.2s;
+    box-shadow: 0 1px 6px #4facfe13;
+  }
+  .medItem:hover {
+    background: #e3f4fd;
+    transform: translateY(-2px) scale(1.015);
+    box-shadow: 0 4px 14px #4facfe21;
+  }
+  .badge {
+    padding: 3px 10px;
+    border-radius: 4px;
+    color: #fff;
+    font-weight: bold;
+    font-size: 0.87em;
+    margin-left: 8px;
+    display: inline-block;
+    vertical-align: middle;
+  }
+  .badge-red { background-color: #e53935; }
+  .badge-orange { background-color: #fb8c00; }
+  .badge-yellow { background-color: #fbc02d; color: #333; }
+</style>
+</head>
+<body>
+
+<!-- Register -->
+<div id="registerDiv" class="container">
+  <h2>Register</h2>
+  <div class="field">
+    <input type="email" id="regEmail" placeholder=" " autocomplete="email"/>
+    <label>Email Address</label>
+  </div>
+  <div class="field">
+    <input type="password" id="regPass" placeholder=" " autocomplete="new-password"/>
+    <label>Password</label>
+  </div>
+  <button onclick="registerUser()">Register</button>
+  <div class="link">Already have an account? <a href="#" onclick="showLogin()">Login here</a></div>
+</div>
+
+<!-- Login -->
+<div id="loginDiv" class="container" style="display:none;">
+  <h2>Login</h2>
+  <div class="field">
+    <input type="email" id="loginEmail" placeholder=" " autocomplete="email"/>
+    <label>Email Address</label>
+  </div>
+  <div class="field">
+    <input type="password" id="loginPass" placeholder=" " autocomplete="current-password"/>
+    <label>Password</label>
+  </div>
+  <button onclick="loginUser()">Login</button>
+  <div class="link">Don't have an account? <a href="#" onclick="showRegister()">Register here</a></div>
+</div>
+
+<!-- Dashboard -->
+<div id="appDiv">
+  <h2>Welcome, <span id="userEmail"></span></h2>
+  <button onclick="logoutUser()" style="width:auto;margin-bottom:20px;">Logout</button>
+
+  <h3>Upload Medicine Excel</h3>
+  <input type="file" id="uploadExcel" />
+  <p><small>Excel columns: name, batch, expiry (any format), quantity, rack</small></p>
+
+  <h3>Medicine List</h3>
+  <div class="tab-buttons">
+    <button id="tab-meds" onclick="setActiveTab('meds')">All Medicines</button>
+    <button id="tab-exp" onclick="setActiveTab('expiry')">Near Expiry</button>
+  </div>
+  <div id="medList"></div>
+</div>
+
+<script>
+  // Firebase config
+  const firebaseConfig = {
+    apiKey: "AIzaSyBj_9a5ep2lxKru6yEQqNLHqpSZOm7qi-s",
+    authDomain: "smart-phc-dashboard.firebaseapp.com",
+    projectId: "smart-phc-dashboard",
+    storageBucket: "smart-phc-dashboard.firebasestorage.app",
+    messagingSenderId: "519246980359",
+    appId: "1:519246980359:web:80d2b1dec39076ad2ad1a2",
+    measurementId: "G-QQX4EZK7KP"
+  };
+  firebase.initializeApp(firebaseConfig);
+  const auth = firebase.auth();
+  const db = firebase.firestore();
+
+  // Floating tab UI state
+  let currentTab = 'meds';
+
+  // Tab switching
+  function setActiveTab(tab) {
+    currentTab = tab;
+    document.getElementById('tab-meds').classList.remove('active');
+    document.getElementById('tab-exp').classList.remove('active');
+    if (tab === 'meds') {
+      document.getElementById('tab-meds').classList.add('active');
+      fetchMedicines();
+    } else {
+      document.getElementById('tab-exp').classList.add('active');
+      fetchNearExpiry();
+    }
+  }
+
+  // Floating tab initial state
+  setTimeout(() => setActiveTab('meds'), 200);
+
+  function showRegister() {
+    document.getElementById('registerDiv').style.display = 'block';
+    document.getElementById('loginDiv').style.display = 'none';
+  }
+  function showLogin() {
+    document.getElementById('registerDiv').style.display = 'none';
+    document.getElementById('loginDiv').style.display = 'block';
+  }
+  function registerUser() {
+    const email = document.getElementById('regEmail').value;
+    const pass = document.getElementById('regPass').value;
+    if (!email || !pass) return alert('Please enter email and password');
+    auth.createUserWithEmailAndPassword(email, pass)
+      .then(() => alert('Registration successful. Please login.'))
+      .catch(e => alert(e.message));
+  }
+  function loginUser() {
+    const email = document.getElementById('loginEmail').value;
+    const pass = document.getElementById('loginPass').value;
+    if (!email || !pass) return alert('Please enter email and password');
+    auth.signInWithEmailAndPassword(email, pass)
+      .then(() => {})
+      .catch(e => alert(e.message));
+  }
+  function logoutUser() { auth.signOut(); }
+  auth.onAuthStateChanged(user => {
+    if (user) {
+      document.getElementById('registerDiv').style.display = 'none';
+      document.getElementById('loginDiv').style.display = 'none';
+      document.getElementById('appDiv').style.display = 'block';
+      document.getElementById('userEmail').textContent = user.email;
+      setActiveTab(currentTab); // Refresh current tab's medicines
+    } else {
+      document.getElementById('registerDiv').style.display = 'block';
+      document.getElementById('loginDiv').style.display = 'none';
+      document.getElementById('appDiv').style.display = 'none';
+      clearMedicineList();
+    }
+  });
+
+  function clearMedicineList() {
+    document.getElementById('medList').innerHTML = '';
+  }
+
+  // Format any input date to MM/YYYY
+  function formatExpiryDate(dateValue) {
+    if (!dateValue) return '';
+    let dateObj;
+    // Excel serial to JS date
+    if (typeof dateValue === 'number') {
+      dateObj = new Date(Math.round((dateValue - 25569) * 86400 * 1000));
+    } else if (dateValue instanceof Date) {
+      dateObj = dateValue;
+    } else if (typeof dateValue === 'string') {
+      // Try YYYY-MM-DD, DD-MM-YYYY, etc.
+      let parsed = Date.parse(dateValue);
+      if (!isNaN(parsed)) dateObj = new Date(parsed);
+      else return dateValue; // fallback to raw if unparseable
+    }
+    if (!dateObj || isNaN(dateObj)) return '';
+    let month = String(dateObj.getMonth() + 1).padStart(2, '0');
+    let year = dateObj.getFullYear();
+    return `${month}/${year}`;
+  }
+
+  // Add medicine to firestore
+  function addMedicineData(med) {
+    db.collection('medicines').add(med)
+      .then(() => console.log('Added:', med))
+      .catch(e => alert('Error adding medicine: ' + e.message));
+  }
+
+  // Excel Upload handler
+  document.getElementById('uploadExcel').addEventListener('change', event => {
+    const file = event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = e => {
+      const data = new Uint8Array(e.target.result);
+      const workbook = XLSX.read(data, {type:'array'});
+      const sheetName = workbook.SheetNames[0];
+      const worksheet = workbook.Sheets[sheetName];
+      const jsonData = XLSX.utils.sheet_to_json(worksheet);
+      jsonData.forEach(med => {
+        med.name = med.name || med.Name || '';
+        med.batch = med.batch || med.Batch || '';
+        med.expiry = med.expiry || med.Expiry || '';
+        med.quantity = med.quantity || med.Quantity || 0;
+        med.rack = med.rack || med.Rack || '';
+        // Always save expiry as MM/YYYY
+        med.expiry = formatExpiryDate(med.expiry);
+        if (med.name && med.expiry) addMedicineData(med);
+      });
+      alert('Upload complete!');
+      setActiveTab(currentTab); // Refresh medicine list on the active tab
+    };
+    reader.readAsArrayBuffer(file);
+  });
+
+  // FEFO: Show all medicines sorted by earliest expiry first. Expiry NOT displayed (as per “everything related to expiry… in expiry tab only”)
+  function fetchMedicines() {
+    clearMedicineList();
+    db.collection('medicines').get()
+      .then(snapshot => {
+        if (snapshot.empty) {
+          document.getElementById('medList').textContent = 'No medicines found.';
+          return;
+        }
+        let medicines = [];
+        snapshot.forEach(doc => {
+          const med = doc.data();
+          let expiryParts = med.expiry?.split('/') ?? [];
+          let expiryDate = expiryParts.length === 2 ? new Date(expiryParts[1], expiryParts[0] - 1, 1) : null;
+          medicines.push({ ...med, expiryDate });
+        });
+        // FEFO sort: earliest expiry first
+        medicines.sort((a, b) => {
+          if (!a.expiryDate) return 1;
+          if (!b.expiryDate) return -1;
+          return a.expiryDate - b.expiryDate;
+        });
+        medicines.forEach(med => {
+          const div = document.createElement('div');
+          div.className = 'medItem';
+          div.innerHTML = `
+            <strong>${med.name}</strong> (Batch: ${med.batch})<br/>
+            Quantity: ${med.quantity} | Rack: ${med.rack}
+          `;
+          document.getElementById('medList').appendChild(div);
+        });
+      })
+      .catch(e => alert(e.message));
+  }
+
+  // Show medicines expiring within 90 days, sorted by soonest, with colored badge
+  function fetchNearExpiry() {
+    clearMedicineList();
+    db.collection('medicines').get()
+      .then(snapshot => {
+        if (snapshot.empty) {
+          document.getElementById('medList').textContent = 'No near expiry medicines found.';
+          return;
+        }
+        let now = new Date();
+        let nearExp = [];
+        snapshot.forEach(doc => {
+          const med = doc.data();
+          let expiryParts = med.expiry?.split('/') ?? [];
+          if (expiryParts.length !== 2) return;
+          let expiryDate = new Date(expiryParts[1], expiryParts[0] - 1, 1);
+          let diffDays = Math.floor((expiryDate - now) / (1000 * 60 * 60 * 24));
+          if (diffDays >= 0 && diffDays <= 90) {
+            nearExp.push({...med, expiryDate, diffDays});
+          }
+        });
+        // Sort by soonest expiry
+        nearExp.sort((a, b) => (a.expiryDate - b.expiryDate));
+        if (nearExp.length === 0) {
+          document.getElementById('medList').textContent = 'No near expiry medicines found.';
+          return;
+        }
+        nearExp.forEach(med => {
+          let badgeClass = '';
+          let badgeText = '';
+          if (med.diffDays <= 30) {
+            badgeClass = 'badge-red'; badgeText = 'Expiring <1 month';
+          } else if (med.diffDays <= 60) {
+            badgeClass = 'badge-orange'; badgeText = 'Exp. in 1–2 months';
+          } else {
+            badgeClass = 'badge-yellow'; badgeText = 'Exp. in 2–3 months';
+          }
+          const div = document.createElement('div');
+          div.className = 'medItem';
+          div.innerHTML = `
+            <strong>${med.name}</strong> (Batch: ${med.batch})<br/>
+            Quantity: ${med.quantity} | Rack: ${med.rack}<br/>
+            <span>Expiry: ${med.expiry} <span class="badge ${badgeClass}">${badgeText}</span></span>
+          `;
+          document.getElementById('medList').appendChild(div);
+        });
+      })
+      .catch(e => alert(e.message));
+  }
+</script>
+
+</body>
+</html>
