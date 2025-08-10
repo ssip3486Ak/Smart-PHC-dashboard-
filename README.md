@@ -1,2 +1,2 @@
-# Smart-PHC-dashboard-
+# Smart-PHC-Dashboard-
 Digital Medicine store tool
