@@ -1,91 +1,127 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Smart PHC Medicine Store Dashboard - Secure</title>
-<style>
-    body { font-family: Arial, sans-serif; margin: 0; background: #f4f8f9; color: #333; }
-    header { background: linear-gradient(90deg, #0077b6, #00b894); color: white; padding: 15px 20px; text-align: center; font-size: 1.5em; font-weight: bold; }
-    nav { display: flex; background: #e0f2f1; border-bottom: 2px solid #ccc; }
-    nav button { flex: 1; padding: 12px; border: none; background: transparent; cursor: pointer; font-size: 1em; }
-    nav button.active { background: #b2dfdb; font-weight: bold; border-bottom: 3px solid #0077b6; }
+  <title>PHC Dashboard Secure</title>
+  <style>
+    body { font-family: Arial, sans-serif; background:#f4f8f9; }
+    header { background:#009688; color:white; font-size:1.7em; padding:20px 0; text-align:center; }
+    #authSection { background:#e0f7fa;padding:20px;text-align:center; }
+    #authSection input { padding:8px; margin:6px; width:220px; }
+    nav { display:flex; background:#e0f2f1; border-bottom:2px solid #ccc; }
+    nav button { flex:1; padding:12px; border:none; background:transparent; cursor:pointer; font-size:1em; }
+    nav button.active { background:#b2dfdb; font-weight:bold; border-bottom:3px solid #0077b6; }
     section { padding: 20px; display: none; }
     section.active { display: block; }
-    .card { background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 20px; }
-    .search-bar input { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 5px; }
-    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-    th, td { padding: 10px; border-bottom: 1px solid #ddd; }
-    th { background: #0077b6; color: white; }
-    .btn { background: #00b894; color: white; border: none; padding: 8px 12px; margin: 3px; border-radius: 5px; cursor: pointer; }
-    .btn:hover { background: #019874; }
-    .alert { padding: 10px; background: #ffcccc; border: 1px solid #ff4d4d; color: #b30000; border-radius: 5px; margin-bottom: 10px; }
-    #authSection { background:#e0f7fa; padding:20px; text-align:center; }
-    #authSection input { padding:8px; margin:5px; width: 250px; }
-</style>
+    .card { background:white; padding:15px; border-radius:8px; box-shadow:0 2px 5px rgba(0,0,0,0.1); margin-bottom:20px; }
+    .btn { background:#00b894; color:white; border:none; padding:8px 12px; border-radius:5px; cursor:pointer; margin:2px;}
+    .btn:hover { background:#019874;}
+    .alert { padding:10px; background:#ffcccc; color:#b30000; border-radius:5px; margin-bottom:10px;}
+  </style>
 </head>
 <body>
-
-<header>💊 Smart PHC Medicine Store Dashboard</header>
-
-<!-- Login Section -->
-<div id="authSection">
-  <h2>Login to Access Dashboard</h2>
-  <input type="email" id="authEmail" placeholder="Email"><br>
-  <input type="password" id="authPass" placeholder="Password"><br>
-  <button id="loginBtn" class="btn">Login</button>
-  <button id="logoutBtn" class="btn" style="display:none;">Logout</button>
-  <div id="authMsg" style="color:#b30000;margin:10px;"></div>
-</div>
-
-<!-- Navigation -->
-<nav id="navBar" style="display:none;">
+  <header>💊 Smart PHC Medicine Store Dashboard</header>
+  <div id="authSection">
+    <h2>Login to Access Dashboard</h2>
+    <input type="email" id="authEmail" placeholder="Email"><br>
+    <input type="password" id="authPass" placeholder="Password"><br>
+    <button id="loginBtn" class="btn">Login</button>
+    <button id="logoutBtn" class="btn" style="display:none;">Logout</button>
+    <div id="authMsg" style="color:#b30000;margin:10px;"></div>
+  </div>
+  <nav id="navBar" style="display:none;">
     <button class="tab-btn active" data-tab="stock">Medicine Stock</button>
     <button class="tab-btn" data-tab="expiry">Near Expiry Alerts</button>
     <button class="tab-btn" data-tab="scanner">QR Code Scanner</button>
     <button class="tab-btn" data-tab="reports">Reports</button>
-</nav>
-
-<!-- Stock Tab -->
-<section id="stock" class="active">
+  </nav>
+  <section id="stock">
     <div class="card">
-        <h3>📂 Upload & Search Medicines</h3>
-        <input type="file" id="excelFile" accept=".xlsx, .xls" class="btn">
-        <div class="search-bar">
-            <input type="text" id="searchInput" placeholder="🔍 Search medicine by name...">
-        </div>
-        <select id="rackFilter" class="btn">
-            <option value="">All Racks</option>
-            <option value="Rack 1">Rack 1</option>
-            <option value="Rack 2">Rack 2</option>
-            <option value="Rack 3">Rack 3</option>
-        </select>
+      <h3>Stock of Medicines (Demo)</h3>
+      <table id="medicineTable"><thead>
+        <tr><th>Name</th><th>Rack</th><th>Qty</th><th>Expiry</th></tr></thead>
+        <tbody>
+          <tr><td>Paracetamol</td><td>Rack 1</td><td>100</td><td>2025-09-01</td></tr>
+          <tr><td>Amoxicillin</td><td>Rack 2</td><td>50</td><td>2025-08-20</td></tr>
+        </tbody>
+      </table>
     </div>
-    <div class="card">
-        <table id="medicineTable">
-            <thead>
-                <tr><th>Medicine Name</th><th>Rack</th><th>Quantity</th><th>Expiry Date</th></tr>
-            </thead>
-            <tbody>
-                <tr><td>Paracetamol</td><td>Rack 1</td><td>100</td><td>2025-09-01</td></tr>
-                <tr><td>Amoxicillin</td><td>Rack 2</td><td>50</td><td>2025-08-20</td></tr>
-            </tbody>
-        </table>
-    </div>
-</section>
+  </section>
+  <section id="expiry">
+    <div class="card"><h3>⚠ Near Expiry Medicines (Within 30d)</h3><div id="expiryAlerts"></div></div>
+  </section>
+  <section id="scanner">
+    <div class="card"><h3>QR Code Scanner</h3><button class="btn">Start</button></div>
+  </section>
+  <section id="reports">
+    <div class="card"><h3>Reports</h3><button class="btn">Export</button></div>
+  </section>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+  <script>
+  const firebaseConfig = {
+    apiKey: "AIzaSyBj_9a5ep2lxKru6yEQqNLHqpSZOm7qi-s",
+    authDomain: "smart-phc-dashboard.firebaseapp.com",
+    projectId: "smart-phc-dashboard",
+    storageBucket: "smart-phc-dashboard.firebasestorage.app",
+    messagingSenderId: "519246980359",
+    appId: "1:519246980359:web:80d2b1dec39076ad2ad1a2",
+    measurementId: "G-QQX4EZK7KP"
+  };
+  firebase.initializeApp(firebaseConfig);
+  const auth = firebase.auth();
 
-<!-- Expiry Tab -->
-<section id="expiry">
-    <div class="card">
-        <h3>⚠ Near Expiry Medicines (Within 30 Days)</h3>
-        <div id="expiryAlerts"></div>
-    </div>
-</section>
+  auth.onAuthStateChanged(user => {
+    if (user) {
+      document.getElementById('authSection').style.display = 'none';
+      document.getElementById('navBar').style.display = 'flex';
+      document.querySelectorAll('section').forEach(s => s.style.display = 'none');
+      document.getElementById('stock').style.display = 'block';
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelector('.tab-btn[data-tab="stock"]').classList.add('active');
+      document.getElementById('logoutBtn').style.display = '';
+    } else {
+      document.getElementById('authSection').style.display = 'block';
+      document.getElementById('navBar').style.display = 'none';
+      document.querySelectorAll('section').forEach(s => s.style.display = 'none');
+      document.getElementById('logoutBtn').style.display = 'none';
+    }
+  });
 
-<!-- Scanner Tab -->
-<section id="scanner">
-    <div class="card">
-        <h3>📷 QR Code Scanner</h3>
-        <button id="startScanner" class="btn">Start Camera Scan</button>
-        <video id="qrVideo" width="300" height="200" style="display:none; border:1px solid #ccc;"></video>
-        <p id="qrResult"></p>
+  document.getElementById('loginBtn').onclick = function() {
+    document.getElementById('authMsg').textContent = "";
+    const email = document.getElementById('authEmail').value;
+    const pass = document.getElementById('authPass').value;
+    auth.signInWithEmailAndPassword(email, pass)
+      .catch(err => document.getElementById('authMsg').textContent = err.message);
+  };
+  document.getElementById('logoutBtn').onclick = function(){ auth.signOut(); };
+
+  // Tabs
+  document.querySelectorAll(".tab-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('section').forEach(s => s.style.display = 'none');
+      btn.classList.add('active');
+      document.getElementById(btn.dataset.tab).style.display = 'block';
+    });
+  });
+
+  // Near expiry alert (demo logic)
+  function checkExpiry(){
+    const rows = document.querySelectorAll("#medicineTable tbody tr");
+    const now = new Date();
+    const alertBox = document.getElementById("expiryAlerts");
+    alertBox.innerHTML = "";
+    rows.forEach(row => {
+      let expiryDate = new Date(row.cells[3].innerText);
+      let diffDays = Math.ceil((expiryDate - now) / (1000*60*60*24));
+      if(diffDays <= 30){
+        let medName = row.cells[0].innerText;
+        alertBox.innerHTML += `<div class="alert">${medName} - Expires on ${expiryDate.toISOString().split('T')[0]}</div>`;
+      }
+    });
+  }
+  checkExpiry();
+  </script>
+</body>
+</html>
