@@ -1,148 +1,200 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>Smart PHC</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta charset="UTF-8">
+<title>Smart PHC</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <!-- Firebase SDKs (v9 modular) -->
-  <script type="module">
-    // Import Firebase modules
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
-    import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
-    import { getDatabase, ref, set, get, child } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
+<!-- External libs -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<script src="https://unpkg.com/html5-qrcode"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js"></script>
 
-    // Firebase config
-    const firebaseConfig = {
-      apiKey: "AIzaSyBj_9a5ep2lxKru6yEQqNLHqpSZOm7qi-s",
-      authDomain: "smart-phc-dashboard.firebaseapp.com",
-      databaseURL: "https://smart-phc-dashboard-default-rtdb.firebaseio.com",
-      projectId: "smart-phc-dashboard",
-      storageBucket: "smart-phc-dashboard.firebasestorage.app",
-      messagingSenderId: "519246980359",
-      appId: "1:519246980359:web:80d2b1dec39076ad2ad1a2",
-      measurementId: "G-QQX4EZK7KP"
-    };
-
-    // Init Firebase
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-    const db = getDatabase(app);
-
-    let medicineData = [];
-
-    // DOM elements
-    const loginEmail = document.getElementById('loginEmail');
-    const loginPassword = document.getElementById('loginPassword');
-    const loginSection = document.getElementById('loginSection');
-    const dashboard = document.getElementById('dashboard');
-
-    // Login
-    window.login = async function() {
-      try {
-        await signInWithEmailAndPassword(auth, loginEmail.value, loginPassword.value);
-      } catch (error) {
-        alert(error.message);
-      }
-    };
-
-    // Logout
-    window.logout = function() {
-      signOut(auth);
-    };
-
-    // Save data
-    function saveDataToCloud() {
-      set(ref(db, "medicineStock"), medicineData);
-    }
-
-    // Load data
-    function loadDataFromCloud() {
-      get(child(ref(db), "medicineStock")).then(snap => {
-        medicineData = snap.val() || [];
-        renderTable();
-      });
-    }
-
-    // Table renderer
-    function renderTable() {
-      const tb = document.querySelector("#medicineTable tbody");
-      tb.innerHTML = "";
-      medicineData.forEach(row => {
-        tb.innerHTML += `<tr>
-          <td>${row["Medicine Name"]}</td>
-          <td>${row.Rack || ""}</td>
-          <td>${row.Quantity}</td>
-          <td>${row["Expiry Date"]}</td>
-        </tr>`;
-      });
-    }
-
-    // Auth state
-    onAuthStateChanged(auth, (user) => {
-      if (user) {
-        loginSection.style.display = 'none';
-        dashboard.style.display = 'block';
-        loadDataFromCloud();
-      } else {
-        dashboard.style.display = 'none';
-        loginSection.style.display = 'block';
-      }
-    });
-  </script>
-
-  <style>
-    /* ---- Same professional UI styles from earlier ---- */
-    body { font-family: 'Segoe UI', Arial, sans-serif; background: #f4f6f8; margin: 0; color: #333; }
-    .auth-container { max-width: 360px; margin: 48px auto; background: #fff; padding: 24px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.08);}
-    .auth-container h2 { text-align: center; margin-bottom: 20px; color: #1a3d5d; }
-    .auth-container input { width: 100%; padding: 10px; margin-bottom: 12px; border: 1px solid #ccc; border-radius: 5px; font-size: 15px; }
-    .auth-container button { width: 100%; padding: 10px; background: #1a73e8; color: #fff; font-weight: 600; border: none; border-radius: 5px; font-size: 16px; cursor: pointer; transition: background 0.3s;}
-    .auth-container button:hover { background: #155ab6; }
-    header { display: flex; justify-content: space-between; align-items: center; padding: 14px 20px; background: #1a3d5d; color: white; font-weight: 600; font-size: 20px; }
-    .header-left { display: flex; align-items: center; gap: 10px; }
-    .logo { width: 42px; height: 42px; border-radius: 5px; }
-    #logoutBtn { background: transparent; color: white; border: 1px solid #fff; padding: 6px 14px; border-radius: 5px; cursor: pointer; font-size: 16px; }
-    #logoutBtn:hover { background: #fff; color: #1a3d5d; }
-    nav { background: #fff; box-shadow: 0 2px 6px rgba(0,0,0,0.04); display: flex; flex-wrap: wrap; }
-    nav button { background: transparent; color: #555; border: none; border-bottom: 3px solid transparent; cursor: pointer; font-weight: 600; padding: 14px 20px; font-size: 1rem; transition: all 0.25s; }
-    nav button:hover:not(.active) { color: #1a73e8; }
-    nav button.active { color: #1a73e8; border-bottom: 3px solid #1a73e8; }
-    .tab-content { display: none; padding: 20px; background: #fff; border-radius: 0 0 8px 8px; }
-    .tab-content.active { display: block; }
-    table { width: 100%; background: #fff; border-collapse: collapse; font-size: 14px; }
-    th, td { border: 1px solid #eee; padding: 8px; text-align: center; }
-    th { background: #f1f3f5; color: #333; }
-    @media (max-width: 768px) { header { flex-direction: column; gap: 8px; text-align: center; } table { display: block; overflow-x: auto; } }
-  </style>
+<style>
+body { font-family: 'Segoe UI', Arial, sans-serif; background: #fff8e6; margin: 0; color: #333; }
+.auth-container { max-width: 360px; margin: 48px auto; background: #fff; padding: 24px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+.auth-container h2 { text-align: center; margin-bottom: 20px; color: #b35400; }
+.auth-container input { width: 100%; padding: 10px; margin-bottom: 12px; border: 1px solid #ccc; border-radius: 5px; font-size: 15px; }
+.auth-container button { width: 100%; padding: 10px; background: #ff8c00; color: #fff; font-weight: 600; border: none; border-radius: 5px; font-size: 16px; cursor: pointer; transition: background 0.3s; }
+.auth-container button:hover { background: #e57a00; }
+header { display: flex; justify-content: space-between; align-items: center; padding: 14px 20px; background: linear-gradient(90deg, #ffb300, #ff6f00); color: white; font-weight: 600; font-size: 20px; }
+.header-left { display: flex; align-items: center; gap: 10px; }
+.logo { width: 42px; height: 42px; border-radius: 5px; }
+#logoutBtn { background: transparent; color: white; border: 1px solid #fff; padding: 6px 14px; border-radius: 5px; cursor: pointer; font-size: 16px; }
+#logoutBtn:hover { background: #fff; color: #ff6f00; }
+nav { background: #fff3e0; box-shadow: 0 2px 6px rgba(0,0,0,0.04); display: flex; flex-wrap: wrap; }
+nav button { background: transparent; color: #555; border: none; border-bottom: 3px solid transparent; cursor: pointer; font-weight: 600; padding: 14px 20px; font-size: 1rem; transition: all 0.25s; }
+nav button:hover:not(.active) { color: #ff6f00; }
+nav button.active { color: #ff6f00; border-bottom: 3px solid #ff8c00; }
+.tab-content { display: none; padding: 20px; background: #fff; border-radius: 0 0 8px 8px; }
+.tab-content.active { display: block; }
+.controls { display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-end; margin-bottom: 16px; }
+.form-group { display: flex; flex-direction: column; min-width: 160px; }
+.form-group label { color: #b35400; font-size: 14px; font-weight: 600; margin-bottom: 4px; }
+input[type="file"], input[type="text"], select { border-radius: 6px; border: 1px solid #ccc; padding: 8px 10px; font-size: 15px; background: #fff8e1; }
+button { border-radius: 6px; background: #ff8c00; border: none; padding: 9px 16px; font-size: 14px; font-weight: 600; cursor: pointer; color: #fff; transition: background 0.2s, transform 0.2s; }
+button:hover { background: #e57a00; transform: translateY(-1px); }
+#stopScanBtn { background: #d9534f; }
+#stopScanBtn:hover { background: #b52d2a; }
+table { width: 100%; background: #fff; border-collapse: collapse; font-size: 14px; }
+th, td { border: 1px solid #eee; padding: 8px; text-align: center; }
+th { background: #ffe0b2; color: #333; }
+.expired-row { background: #f44336; color: white; }
+.near-expiry-row { background: #fff599; font-weight: bold; }
+.alert { background: #fff8e1; padding: 12px; border-left: 5px solid #ffc107; margin-bottom: 15px; font-size: 15px; }
+@media (max-width: 768px) { header { flex-direction: column; gap: 8px; text-align: center; } .controls { flex-direction: column; align-items: stretch; } .form-group { width: 100%; } table { display: block; overflow-x: auto;} nav button { flex: 1 1 auto; text-align: center; padding: 12px 0; } }
+</style>
 </head>
 <body>
-  <div id="loginSection" class="auth-container">
-    <h2>Smart PHC Login</h2>
-    <input type="email" id="loginEmail" placeholder="Email" />
-    <input type="password" id="loginPassword" placeholder="Password" />
-    <button onclick="login()">Login</button>
-  </div>
 
-  <div id="dashboard" style="display:none;">
-    <header>
-      <div class="header-left">
-        <img src="https://i.imgur.com/6YkP3uF.png" alt="Smart PHC Logo" class="logo" />
-        <span>Smart PHC</span>
-      </div>
-      <button id="logoutBtn" onclick="logout()">Logout</button>
-    </header>
+<div id="loginSection" class="auth-container">
+  <h2>Smart PHC Login</h2>
+  <input type="email" id="loginEmail" placeholder="Email">
+  <input type="password" id="loginPassword" placeholder="Password">
+  <button onclick="login()">Login</button>
+</div>
 
-    <nav>
-      <button class="tab-btn active" data-tab="stock">Medicine Stock</button>
-    </nav>
-
-    <div id="stock" class="tab-content active">
-      <table id="medicineTable">
-        <thead><tr><th>Medicine</th><th>Rack</th><th>Qty</th><th>Expiry</th></tr></thead>
-        <tbody></tbody>
-      </table>
+<div id="dashboard" style="display:none;">
+  <header>
+    <div class="header-left">
+      <img src="https://i.imgur.com/6YkP3uF.png" alt="Smart PHC Logo" class="logo">
+      <span>Smart PHC</span>
     </div>
+    <button id="logoutBtn" onclick="logout()">Logout</button>
+  </header>
+
+  <nav>
+    <button class="tab-btn active" data-tab="stock">Medicine Stock</button>
+    <button class="tab-btn" data-tab="nearExpiry">Near Expiry</button>
+    <button class="tab-btn" data-tab="reports">Reports</button>
+    <button class="tab-btn" data-tab="qr">QR Scanner</button>
+  </nav>
+
+  <div id="stock" class="tab-content active">
+    <div class="controls">
+      <div class="form-group"><label>Import Excel<input type="file" id="excelFile" accept=".xlsx,.xls"></label></div>
+      <div class="form-group"><label>Import PDF<input type="file" id="pdfFile" accept="application/pdf"></label></div>
+      <div class="form-group"><label>Rack<select id="rackFilter"><option value="">All</option></select></label></div>
+      <div class="form-group"><label>Search<input type="text" id="searchBox" placeholder="Search..."></label></div>
+    </div>
+    <table id="medicineTable"><thead><tr><th>Medicine</th><th>Rack</th><th>Qty</th><th>Expiry</th></tr></thead><tbody></tbody></table>
   </div>
+
+  <div id="nearExpiry" class="tab-content">
+    <div class="alert" id="expiryAlert">No near-expiry medicines.</div>
+    <div class="controls">
+      <div class="form-group"><label>Expiring Within<select id="expiryDaysNear">
+        <option value="30">30 days</option><option value="60">60 days</option><option value="90">90 days</option><option value="180">180 days</option></select></label></div>
+      <div class="form-group button-group">
+        <button onclick="renderNearExpiry()">Refresh</button>
+        <button onclick="exportNearExpiryExcel()">Export Excel</button>
+        <button onclick="exportNearExpiryPDF()">Export PDF</button>
+      </div>
+    </div>
+    <table id="nearExpiryTable"><thead><tr><th>Medicine</th><th>Rack</th><th>Qty</th><th>Expiry</th><th>Status</th></tr></thead><tbody></tbody></table>
+  </div>
+
+  <div id="reports" class="tab-content">
+    <div class="controls"><div class="form-group button-group">
+      <button onclick="exportExcel()">Export Stock Excel</button>
+      <button onclick="exportPDF()">Export Stock PDF</button>
+      <button onclick="exportStockReport()">Export Stock Report Excel</button>
+    </div></div>
+    <table id="stockReportTable"><thead><tr><th>Medicine</th><th>Rack</th><th>Qty</th><th>Expiry</th></tr></thead><tbody></tbody></table>
+  </div>
+
+  <div id="qr" class="tab-content">
+    <button id="startScanBtn" onclick="startQRScanner()" style="margin-bottom:10px;">Start Scan</button>
+    <button id="stopScanBtn" onclick="stopQRScanner()" style="display:none;margin-bottom:10px;">Stop Scan</button>
+    <div id="qr-reader" style="width:300px; margin-top:15px; display:none;"></div>
+    <p>Result: <span id="qrResult"></span></p>
+  </div>
+</div>
+
+<!-- Firebase / App logic -->
+<script type="module">
+// Firebase v9 Modular SDK
+import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
+import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
+import { getDatabase, ref, set, get, child } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
+
+// Config
+const firebaseConfig = {
+  apiKey: "AIzaSyBj_9a5ep2lxKru6yEQqNLHqpSZOm7qi-s",
+  authDomain: "smart-phc-dashboard.firebaseapp.com",
+  databaseURL: "https://smart-phc-dashboard-default-rtdb.firebaseio.com",
+  projectId: "smart-phc-dashboard",
+  storageBucket: "smart-phc-dashboard.firebasestorage.app",
+  messagingSenderId: "519246980359",
+  appId: "1:519246980359:web:80d2b1dec39076ad2ad1a2",
+  measurementId: "G-QQX4EZK7KP"
+};
+
+// Init
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getDatabase(app);
+
+let medicineData = [];
+const unique = arr => [...new Set(arr)];
+
+// Auth functions
+window.login = async () => {
+  try { await signInWithEmailAndPassword(auth, loginEmail.value, loginPassword.value); }
+  catch (e) { alert(e.message); }
+};
+window.logout = () => { signOut(auth); };
+
+onAuthStateChanged(auth, (user) => {
+  if (user) {
+    loginSection.style.display = "none";
+    dashboard.style.display = "block";
+    loadDataFromCloud();
+  } else {
+    dashboard.style.display = "none";
+    loginSection.style.display = "block";
+    medicineData = [];
+  }
+});
+
+// Cloud
+function saveDataToCloud(){ set(ref(db,"medicineStock"), medicineData); }
+function loadDataFromCloud(){ get(child(ref(db),"medicineStock")).then(snap => { medicineData = snap.val() || []; renderTable(); }); }
+
+// Helpers
+function toMMYYYY(s){ if(!s)return"";let p=new Date(s); if(!isNaN(p))return("0"+(p.getMonth()+1)).slice(-2)+"/"+p.getFullYear();return s; }
+function getLastDateOfExpiryMonth(m){ if(!m)return null; let[mm,yy]=m.split("/"); return new Date(parseInt(yy),parseInt(mm),0); }
+function getExpiryLabel(d){ if(d<0)return"Expired"; if(d===0)return"Expiring Today"; if(d<=30)return d+" days left"; if(d<=60)return Math.round(d/7)+" weeks left"; if(d<=365)return"About "+Math.floor(d/30)+" months"; return "More than a year"; }
+
+// Tables
+function renderTable(){ const tb = medicineTable.querySelector("tbody"); tb.innerHTML=""; let racks=unique(medicineData.map(m=>m.Rack).filter(Boolean)); rackFilter.innerHTML="<option value=''>All</option>"; racks.forEach(r=>rackFilter.innerHTML+=`<option>${r}</option>`); medicineData.forEach(row=>{tb.innerHTML+=`<tr><td>${row["Medicine Name"]}</td><td>${row.Rack||""}</td><td>${row.Quantity}</td><td>${toMMYYYY(row["Expiry Date"])}</td></tr>`}); }
+function renderNearExpiry(){ const tb=nearExpiryTable.querySelector("tbody"); tb.innerHTML=""; let th=+expiryDaysNear.value,today=new Date(); let list=medicineData.map(m=>{let e=getLastDateOfExpiryMonth(toMMYYYY(m["Expiry Date"])); let dl=e?Math.ceil((e-today)/(1000*60*60*24)):null; return {...m,daysLeft:dl};}).filter(m=>m.daysLeft!==null&&m.daysLeft<=th).sort((a,b)=>a.daysLeft-b.daysLeft); list.forEach(r=>{let cls=r.daysLeft<0?"expired-row":"near-expiry-row";tb.innerHTML+=`<tr class="${cls}"><td>${r["Medicine Name"]}</td><td>${r.Rack||""}</td><td>${r.Quantity}</td><td>${toMMYYYY(r["Expiry Date"])}</td><td>${getExpiryLabel(r.daysLeft)}</td></tr>`;}); }
+expiryDaysNear.onchange=renderNearExpiry; rackFilter.onchange=renderTable; searchBox.oninput=renderTable;
+
+// Imports
+excelFile.onchange=()=>{ const f=excelFile.files[0]; if(!f)return; const r=new FileReader(); r.onload=e=>{ const wb=XLSX.read(new Uint8Array(e.target.result),{type:'array'}); let d=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]); d=d.map(m=>({...m,"Expiry Date":toMMYYYY(m["Expiry Date"])})); mergeStock(d); }; r.readAsArrayBuffer(f); };
+pdfFile.onchange=()=>{ const f=pdfFile.files[0]; if(!f)return; const r=new FileReader(); r.onload=async function(){ const pdf=await pdfjsLib.getDocument({data:new Uint8Array(this.result)}).promise; let text=''; for(let p=1;p<=pdf.numPages;p++){const pg=await pdf.getPage(p); const tc=await pg.getTextContent(); text+=tc.items.map(i=>i.str).join(' ')+'\n';} let arr=[]; for(let line of text.split('\n')){let m=line.match(/([\w\s]+)\s+(\S+)\s+(\d+)/);if(m)arr.push({"Medicine Name":m[1].trim(),"Expiry Date":toMMYYYY(m[2]),"Quantity":+m[3],"Rack":""});} mergeStock(arr); }; r.readAsArrayBuffer(f); };
+function mergeStock(newData){ newData.forEach(n=>{ let ex=medicineData.find(o=>o["Medicine Name"].toLowerCase()===n["Medicine Name"].toLowerCase()&&o["Expiry Date"]===n["Expiry Date"]); ex?ex.Quantity+=n.Quantity:medicineData.push(n); }); saveDataToCloud(); renderTable(); }
+
+// Exports
+function exportExcel(){XLSX.writeFile(XLSX.utils.book_append_sheet(XLSX.utils.book_new(),XLSX.utils.json_to_sheet(medicineData),"Stock"),"medicine_stock.xlsx");}
+function exportPDF(){html2pdf().from(medicineTable).save("medicine_stock.pdf");}
+function exportNearExpiryExcel(){let th=+expiryDaysNear.value,today=new Date();let arr=medicineData.map(m=>{let e=getLastDateOfExpiryMonth(toMMYYYY(m["Expiry Date"]));let dl=e?Math.ceil((e-today)/(1000*60*60*24)):null;return {...m,daysLeft:dl};}).filter(m=>m.daysLeft<=th);XLSX.writeFile(XLSX.utils.book_append_sheet(XLSX.utils.book_new(),XLSX.utils.json_to_sheet(arr),"NearExpiry"),"near_expiry.xlsx");}
+function exportNearExpiryPDF(){html2pdf().from(nearExpiryTable).save("near_expiry.pdf");}
+function renderStockReportTable(){const tb=stockReportTable.querySelector("tbody");tb.innerHTML="";medicineData.forEach(r=>tb.innerHTML+=`<tr><td>${r["Medicine Name"]}</td><td>${r.Rack||""}</td><td>${r.Quantity}</td><td>${toMMYYYY(r["Expiry Date"])}</td></tr>`);}
+function exportStockReport(){XLSX.writeFile(XLSX.utils.book_append_sheet(XLSX.utils.book_new(),XLSX.utils.json_to_sheet(medicineData),"StockReport"),"stock_in_hand.xlsx");}
+
+// QR scanner
+let qrScanner=null;
+function startQRScanner(){ if(!qrScanner) qrScanner=new Html5Qrcode("qr-reader"); document.getElementById("qr-reader").style.display=""; startScanBtn.style.display="none"; stopScanBtn.style.display=""; qrResult.textContent=""; qrScanner.start({facingMode:"environment"},{fps:10,qrbox:250},msg=>{ qrResult.textContent=msg; stopQRScanner(); }).catch(err=>{ qrResult.textContent="Camera error: "+err; stopQRScanner(); }); }
+function stopQRScanner(){ startScanBtn.style.display=""; stopScanBtn.style.display="none"; document.getElementById("qr-reader").style.display="none"; if(qrScanner){qrScanner.stop().then(()=>qrScanner.clear()).catch(()=>{});} }
+window.startQRScanner=startQRScanner; window.stopQRScanner=stopQRScanner;
+
+// Tabs
+document.querySelectorAll(".tab-btn").forEach(b=>b.onclick=()=>{ document.querySelectorAll(".tab-btn").forEach(x=>x.classList.remove("active")); b.classList.add("active"); document.querySelectorAll(".tab-content").forEach(t=>t.classList.remove("active")); document.getElementById(b.dataset.tab).classList.add("active"); if(b.dataset.tab==="nearExpiry")renderNearExpiry(); if(b.dataset.tab==="reports")renderStockReportTable(); });
+</script>
+
 </body>
 </html>
