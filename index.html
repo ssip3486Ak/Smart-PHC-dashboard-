@@ -17,13 +17,12 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js"></script>
 
 <style>
-/* LOGIN */
+body{font-family:Arial,sans-serif;background:#f5fdfc;margin:0;}
 .auth-container{max-width:360px;margin:80px auto;background:#fff;padding:20px;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.1);}
 .auth-container input{width:100%;padding:8px;margin-bottom:10px;border:1px solid #ccc;border-radius:5px;}
 .auth-container button{width:100%;padding:10px;background:linear-gradient(90deg,#0077b6,#00b894);color:#fff;font-weight:bold;border:none;border-radius:5px;cursor:pointer;}
 .auth-container button:hover{background:#00b894;}
-/* DASHBOARD */
-body{font-family:Arial,sans-serif;background:#f5fdfc;margin:0;}
+
 header{background:linear-gradient(90deg,#0077b6,#00b894);color:#fff;padding:15px;text-align:center;font-size:22px;font-weight:bold;display:flex;justify-content:space-between;align-items:center;}
 #logoutBtn{background:#fff;color:#0077b6;border:none;padding:6px 12px;border-radius:5px;cursor:pointer;font-weight:bold;}
 #logoutBtn:hover{background:#ffeaa7;}
@@ -32,10 +31,7 @@ nav button{flex:1;padding:12px;border:none;background:transparent;font-size:16px
 nav button.active{border-bottom:3px solid #0077b6;font-weight:bold;color:#0077b6;}
 .tab-content{display:none;padding:20px;}
 .tab-content.active{display:block;}
-/* Only expiry alert now on Near Expiry tab */
 .alert{background:#ffeaa7;padding:10px;margin-bottom:15px;border-left:5px solid #fdcb6e;}
-
-/* Controls/UI */
 .controls{display:flex;flex-wrap:wrap;gap:18px;align-items:end;margin-bottom:15px;}
 .form-group{display:flex;flex-direction:column;}
 .form-group label{color:#0077b6;font-size:14px;margin-bottom:4px;font-weight:600;letter-spacing:0.2px;display:flex;align-items:center;gap:5px;}
@@ -51,7 +47,7 @@ th{background:#d0f0ec;}
 </head>
 <body>
 
-<!-- LOGIN -->
+<!-- Login -->
 <div id="loginSection" class="auth-container">
   <h2>Login</h2>
   <input type="email" id="loginEmail" placeholder="Email">
@@ -59,7 +55,7 @@ th{background:#d0f0ec;}
   <button onclick="login()">Login</button>
 </div>
 
-<!-- DASHBOARD -->
+<!-- Dashboard -->
 <div id="dashboard" style="display:none;">
 <header>
   💊 Smart PHC Medicine Store
@@ -73,7 +69,7 @@ th{background:#d0f0ec;}
   <button class="tab-btn" data-tab="reports">Reports</button>
 </nav>
 
-<!-- ====== STOCK TAB (NO expiry UI/alerts here) ====== -->
+<!-- Stock Tab -->
 <div id="stock" class="tab-content active">
   <div class="controls">
     <div class="form-group"><label for="excelFile">📥 Import Excel</label><input type="file" id="excelFile" accept=".xlsx,.xls"></div>
@@ -85,7 +81,7 @@ th{background:#d0f0ec;}
   <table id="medicineTable"><thead><tr><th>Medicine Name</th><th>Rack</th><th>Quantity</th><th>Expiry Date</th></tr></thead><tbody></tbody></table>
 </div>
 
-<!-- ====== NEAR EXPIRY TAB (ALL expiry tools/alerts/exports here) ====== -->
+<!-- Near Expiry Tab -->
 <div id="nearExpiry" class="tab-content">
   <div class="alert" id="expiryAlert">No near-expiry medicines.</div>
   <div class="controls">
@@ -96,20 +92,34 @@ th{background:#d0f0ec;}
   <table id="nearExpiryTable"><thead><tr><th>Medicine Name</th><th>Rack</th><th>Quantity</th><th>Expiry Date</th><th>Days Left</th></tr></thead><tbody></tbody></table>
 </div>
 
-<!-- ====== QR SCANNER ====== -->
 <div id="qr" class="tab-content">
   <button onclick="startQRScanner()">Start Camera Scan</button>
   <div id="qr-reader" style="width:300px; margin-top:15px;"></div>
   <p>Scanned Result: <span id="qrResult"></span></p>
 </div>
 
-<!-- ====== REPORTS ====== -->
 <div id="reports" class="tab-content">
   <h3>Reports</h3><p>View and download stock & expiry reports.</p>
 </div>
 </div>
 
 <script>
+// ===== Helper: Force MM/YYYY =====
+function toMMYYYY(dateStr) {
+  if (!dateStr) return "";
+  dateStr = dateStr.trim();
+  if (/^\d{2}\/\d{4}$/.test(dateStr)) return dateStr;
+  let m = dateStr.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (m) return ("0"+m[2]).slice(-2)+"/"+m[3];
+  let n = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (n) return n[2]+"/"+n[1];
+  let x = dateStr.match(/^(\d{4})\/(\d{1,2})$/);
+  if (x) return ("0"+x[2]).slice(-2)+"/"+x[1];
+  let y = dateStr.match(/^(\d{4})$/);
+  if (y) return "01/"+y[1];
+  return dateStr;
+}
+
 // ===== FIREBASE INIT =====
 const firebaseConfig = {
   apiKey: "AIzaSyBj_9a5ep2lxKru6yEQqNLHqpSZOm7qi-s",
@@ -128,26 +138,62 @@ auth.onAuthStateChanged(user=>{loginSection.style.display=user?"none":"block";da
 
 // ===== DASHBOARD LOGIC =====
 let medicineData=[]; const unique=arr=>[...new Set(arr)];
-document.querySelectorAll(".tab-btn").forEach(btn=>btn.onclick=()=>{document.querySelectorAll(".tab-btn").forEach(b=>b.classList.remove("active"));document.querySelectorAll(".tab-content").forEach(c=>c.classList.remove("active"));btn.classList.add("active");document.getElementById(btn.dataset.tab).classList.add("active");if(btn.dataset.tab==="nearExpiry"){renderNearExpiry();checkExpiry();}});
-excelFile.onchange=()=>{const f=excelFile.files[0];if(f){const r=new FileReader();r.onload=e=>{const wb=XLSX.read(new Uint8Array(e.target.result),{type:'array'});const sh=wb.Sheets[wb.SheetNames[0]];medicineData=mergeStock(medicineData,XLSX.utils.sheet_to_json(sh));renderTable();};r.readAsArrayBuffer(f);}};
+
+// Nav tabs
+document.querySelectorAll(".tab-btn").forEach(btn=>btn.onclick=()=>{
+  document.querySelectorAll(".tab-btn").forEach(b=>b.classList.remove("active"));
+  document.querySelectorAll(".tab-content").forEach(c=>c.classList.remove("active"));
+  btn.classList.add("active");
+  document.getElementById(btn.dataset.tab).classList.add("active");
+  if(btn.dataset.tab==="nearExpiry"){renderNearExpiry();checkExpiry();}
+});
+
+// Import Excel
+excelFile.onchange=()=>{const f=excelFile.files[0];if(f){const r=new FileReader();r.onload=e=>{const wb=XLSX.read(new Uint8Array(e.target.result),{type:'array'});const sh=wb.Sheets[wb.SheetNames[0]];let data=XLSX.utils.sheet_to_json(sh);data=data.map(m=>({...m,"Expiry Date":toMMYYYY(m["Expiry Date"])}));medicineData=mergeStock(medicineData,data);renderTable();};r.readAsArrayBuffer(f);}};
+
+// Import PDF
 pdfFile.onchange=()=>processPDF();
-async function processPDF(){if(!pdfFile.files.length)return alert("Select a PDF");const r=new FileReader();r.onload=async function(){const pdf=await pdfjsLib.getDocument({data:new Uint8Array(this.result)}).promise;let text='';for(let p=1;p<=pdf.numPages;p++){text+=(await pdf.getPage(p)).getTextContent().then(tc=>tc.items.map(i=>i.str).join(' ')+'\n');}parsePDFData(await text);};r.readAsArrayBuffer(pdfFile.files[0]);}
-function parsePDFData(text){let lines=text.split('\n'),data=[];for(let line of lines){let m=line.match(/([A-Za-z0-9\s]+)\s+(\d{2}\/\d{4})\s+(\d+)/);if(m)data.push({"Medicine Name":m[1].trim(),"Expiry Date":m[2].trim(),"Quantity":+m[3],"Rack":""});}if(data.length){medicineData=mergeStock(medicineData,data);renderTable();}else alert("No medicines found in PDF.");}
+async function processPDF(){if(!pdfFile.files.length)return alert("Select a PDF");const r=new FileReader();r.onload=async function(){const pdf=await pdfjsLib.getDocument({data:new Uint8Array(this.result)}).promise;let text='';for(let p=1;p<=pdf.numPages;p++){const page=await pdf.getPage(p);const tc=await page.getTextContent();text+=tc.items.map(i=>i.str).join(' ')+'\n';}parsePDFData(text);};r.readAsArrayBuffer(pdfFile.files[0]);}
+function parsePDFData(text){let lines=text.split('\n'),data=[];for(let line of lines){let m=line.match(/([A-Za-z0-9\s]+)\s+(\d{2}\/\d{4})\s+(\d+)/);if(m)data.push({"Medicine Name":m[1].trim(),"Expiry Date":toMMYYYY(m[2].trim()),"Quantity":+m[3],"Rack":""});}if(data.length){medicineData=mergeStock(medicineData,data);renderTable();}else alert("No medicines found in PDF.");}
+
+// Merge
 function mergeStock(ex,incoming){for(let n of incoming){let f=ex.find(o=>o["Medicine Name"].toLowerCase()===n["Medicine Name"].toLowerCase()&&o["Expiry Date"]===n["Expiry Date"]);f?f.Quantity+=n.Quantity:ex.push(n);}return ex;}
-function renderTable(){medicineTable.querySelector("tbody").innerHTML="";let rack=rackFilter.value.toLowerCase(),search=searchBox.value.toLowerCase();let racks=unique(medicineData.map(m=>m.Rack).filter(Boolean));rackFilter.innerHTML="<option value=''>All Racks</option>";racks.forEach(r=>rackFilter.innerHTML+=`<option value="${r}">${r}</option>`);[...medicineData].sort((a,b)=>new Date(a["Expiry Date"])-new Date(b["Expiry Date"])).forEach(row=>{if((rack&&row.Rack?.toLowerCase()!==rack)||(search&&!row["Medicine Name"].toLowerCase().includes(search)))return;medicineTable.querySelector("tbody").innerHTML+=`<tr><td>${row["Medicine Name"]}</td><td>${row.Rack||""}</td><td>${row.Quantity}</td><td>${row["Expiry Date"]}</td></tr>`;});}
+
+// Render Stock Table
+function renderTable(){medicineTable.querySelector("tbody").innerHTML="";let rack=rackFilter.value.toLowerCase(),search=searchBox.value.toLowerCase();let racks=unique(medicineData.map(m=>m.Rack).filter(Boolean));rackFilter.innerHTML="<option value=''>All Racks</option>";racks.forEach(r=>rackFilter.innerHTML+=`<option value="${r}">${r}</option>`);[...medicineData].sort((a,b)=>new Date(a["Expiry Date"])-new Date(b["Expiry Date"])).forEach(row=>{if((rack&&row.Rack?.toLowerCase()!==rack)||(search&&!row["Medicine Name"].toLowerCase().includes(search)))return;medicineTable.querySelector("tbody").innerHTML+=`<tr><td>${row["Medicine Name"]}</td><td>${row.Rack||""}</td><td>${row.Quantity}</td><td>${toMMYYYY(row["Expiry Date"])}</td></tr>`;});}
 rackFilter.onchange=renderTable;searchBox.oninput=renderTable;
+
+// Near Expiry Logic
 function checkExpiry(){
-  let threshold = parseInt(document.getElementById("expiryDaysNear").value);
+  let threshold = parseInt(expiryDaysNear.value);
   let today = new Date();
-  let nearExpiry = medicineData.filter(m=>{let d=(new Date(m["Expiry Date"])-today)/(1000*60*60*24);return d<=threshold&&d>=0;});
-  document.getElementById("expiryAlert").innerHTML = nearExpiry.length ? `⚠ ${nearExpiry.length} batches expiring within ${threshold} days!` : `No medicines expiring within ${threshold} days.`;
+  let nearExpiry = medicineData.filter(m=>{
+    let d=(new Date(toMMYYYY(m["Expiry Date"])+"-01")-today)/(1000*60*60*24);
+    return d<=threshold&&d>=0;
+  });
+  expiryAlert.innerHTML = nearExpiry.length ? `⚠ ${nearExpiry.length} batches expiring within ${threshold} days!` : `No medicines expiring within ${threshold} days.`;
 }
-function renderNearExpiry(){let d=+expiryDaysNear.value,today=new Date();let list=medicineData.map(m=>({...m,daysLeft:Math.ceil((new Date(m["Expiry Date"])-today)/(1000*60*60*24))})).filter(m=>m.daysLeft<=d&&m.daysLeft>=0).sort((a,b)=>a.daysLeft-b.daysLeft);nearExpiryTable.querySelector("tbody").innerHTML="";list.forEach(r=>nearExpiryTable.querySelector("tbody").innerHTML+=`<tr><td>${r["Medicine Name"]}</td><td>${r.Rack||""}</td><td>${r.Quantity}</td><td>${r["Expiry Date"]}</td><td>${r.daysLeft}</td></tr>`);}
+function renderNearExpiry(){
+  let d=+expiryDaysNear.value,today=new Date();
+  let list=medicineData.map(m=>{
+    let daysLeft=Math.ceil((new Date(toMMYYYY(m["Expiry Date"])+"-01")-today)/(1000*60*60*24));
+    return {...m,daysLeft};
+  }).filter(m=>m.daysLeft<=d&&m.daysLeft>=0).sort((a,b)=>a.daysLeft-b.daysLeft);
+  nearExpiryTable.querySelector("tbody").innerHTML="";
+  list.forEach(r=>nearExpiryTable.querySelector("tbody").innerHTML+=`<tr><td>${r["Medicine Name"]}</td><td>${r.Rack||""}</td><td>${r.Quantity}</td><td>${toMMYYYY(r["Expiry Date"])}</td><td>${r.daysLeft}</td></tr>`);
+}
 expiryDaysNear.onchange=()=>{renderNearExpiry();checkExpiry();};
-function exportExcel(){XLSX.writeFile(XLSX.utils.book_append_sheet(XLSX.utils.book_new(),XLSX.utils.json_to_sheet(medicineData),"Stock"),"medicine_stock.xlsx");}
+
+// Export
+function exportExcel(){XLSX.writeFile(XLSX.utils.book_append_sheet(XLSX.utils.book_new(),XLSX.utils.json_to_sheet(medicineData.map(r=>({...r,"Expiry Date":toMMYYYY(r["Expiry Date"])}))),"Stock"),"medicine_stock.xlsx");}
 function exportPDF(){html2pdf().from(medicineTable).save("medicine_stock.pdf");}
-function exportNearExpiryExcel(){let d=+expiryDaysNear.value,today=new Date(),list=medicineData.map(m=>({...m,daysLeft:Math.ceil((new Date(m["Expiry Date"])-today)/(1000*60*60*24))})).filter(m=>m.daysLeft<=d && m.daysLeft>=0).sort((a,b)=>a.daysLeft-b.daysLeft);XLSX.writeFile(XLSX.utils.book_append_sheet(XLSX.utils.book_new(),XLSX.utils.json_to_sheet(list),"Near Expiry"),"near_expiry.xlsx");}
+function exportNearExpiryExcel(){
+  let d=+expiryDaysNear.value,today=new Date(),list=medicineData.map(m=>({...m,daysLeft:Math.ceil((new Date(toMMYYYY(m["Expiry Date"])+"-01")-today)/(1000*60*60*24))})).filter(m=>m.daysLeft<=d&&m.daysLeft>=0).sort((a,b)=>a.daysLeft-b.daysLeft);
+  XLSX.writeFile(XLSX.utils.book_append_sheet(XLSX.utils.book_new(),XLSX.utils.json_to_sheet(list.map(r=>({...r,"Expiry Date":toMMYYYY(r["Expiry Date"])}))),"Near Expiry"),"near_expiry.xlsx");
+}
 function exportNearExpiryPDF(){html2pdf().from(nearExpiryTable).save("near_expiry.pdf");}
+
+// QR Scanner
 function startQRScanner(){const qrReader=new Html5Qrcode("qr-reader");qrReader.start({facingMode:"environment"},{fps:10,qrbox:250},msg=>{qrResult.textContent=msg;qrReader.stop();});}
 </script>
 </body>
