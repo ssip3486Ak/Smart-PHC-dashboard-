@@ -24,30 +24,29 @@ body{font-family:Arial,sans-serif;background:#f5fdfc;margin:0;}
 .auth-container button{width:100%;padding:10px;background:linear-gradient(90deg,#0077b6,#00b894);color:#fff;font-weight:bold;border:none;border-radius:5px;cursor:pointer;}
 header{background:linear-gradient(90deg,#0077b6,#00b894);color:#fff;padding:15px;font-size:22px;font-weight:bold;display:flex;justify-content:space-between;align-items:center;}
 #logoutBtn{background:#fff;color:#0077b6;border:none;padding:6px 12px;border-radius:5px;font-weight:bold;cursor:pointer;}
-#logoutBtn:hover{background:#ffeaa7;}
 nav{display:flex;background-color:#e3f6f5;border-bottom:1px solid #ccc;}
 nav button{flex:1;padding:12px;border:none;background:transparent;font-size:16px;cursor:pointer;}
 nav button.active{border-bottom:3px solid #0077b6;font-weight:bold;color:#0077b6;}
-.tab-content{display:none;padding:20px;opacity:0;transform:translateY(10px);transition:opacity 0.4s,transform 0.4s;}
-.tab-content.active{display:block;opacity:1;transform:translateY(0);}
+.tab-content{display:none;padding:20px;}
+.tab-content.active{display:block;}
 .alert{background:#ffeaa7;padding:10px;margin-bottom:15px;border-left:5px solid #fdcb6e;}
 .controls{display:flex;flex-wrap:wrap;gap:18px;align-items:end;margin-bottom:15px;}
 .form-group{display:flex;flex-direction:column;}
-.form-group label{color:#0077b6;font-size:14px;margin-bottom:4px;font-weight:600;display:flex;align-items:center;gap:5px;}
+.form-group label{color:#0077b6;font-size:14px;margin-bottom:4px;font-weight:600;}
 input[type="file"],input[type="text"],select{border-radius:8px;border:1px solid #b0e2e0;padding:6px 10px;font-size:15px;background:#e3f6f5;}
-.button-group{flex-direction:row;gap:8px;}
+.button-group{display:flex;gap:8px;}
 button{border-radius:8px;background:linear-gradient(90deg,#0077b6,#00b894);border:none;padding:8px 14px;font-size:14px;font-weight:600;cursor:pointer;color:#fff;}
 table{width:100%;border-collapse:collapse;background:#fff;}
 th,td{border:1px solid #ccc;padding:8px;text-align:center;}
 th{background:#d0f0ec;}
-.expired-row{background-color:lightcoral;color:white;font-weight:bold;}
-.near-expiry-row{background-color:khaki;font-weight:bold;}
+.expired-row{background:lightcoral;color:white;font-weight:bold;}
+.near-expiry-row{background:khaki;font-weight:bold;}
 </style>
 </head>
 <body>
 
 <!-- Login -->
-<div id="loginSection" class="auth-container fade-in">
+<div id="loginSection" class="auth-container">
   <h2>Login</h2>
   <input type="email" id="loginEmail" placeholder="Email">
   <input type="password" id="loginPassword" placeholder="Password">
@@ -63,46 +62,48 @@ th{background:#d0f0ec;}
 <nav>
   <button class="tab-btn active" data-tab="stock">Medicine Stock</button>
   <button class="tab-btn" data-tab="nearExpiry">Near Expiry</button>
-  <button class="tab-btn" data-tab="qr">QR Scanner</button>
   <button class="tab-btn" data-tab="reports">Reports</button>
+  <button class="tab-btn" data-tab="qr">QR Scanner</button>
 </nav>
 
-<!-- Tabs -->
+<!-- STOCK TAB -->
 <div id="stock" class="tab-content active">
   <div class="controls">
-    <div class="form-group"><label>📥 Import Excel<input type="file" id="excelFile" accept=".xlsx,.xls"></label></div>
-    <div class="form-group"><label>📄 Ack PDF<input type="file" id="pdfFile" accept="application/pdf"></label></div>
-    <div class="form-group"><label>🗄 Rack<select id="rackFilter"><option value="">All Racks</option></select></label></div>
-    <div class="form-group"><label>🔍 Search<input type="text" id="searchBox" placeholder="Search medicine..."></label></div>
-    <div class="form-group button-group"><button onclick="exportExcel()">📊 Excel</button><button onclick="exportPDF()">📑 PDF</button></div>
+    <div class="form-group"><label>Import Excel<input type="file" id="excelFile" accept=".xlsx,.xls"></label></div>
+    <div class="form-group"><label>Import PDF<input type="file" id="pdfFile" accept="application/pdf"></label></div>
+    <div class="form-group"><label>Rack<select id="rackFilter"><option value="">All</option></select></label></div>
+    <div class="form-group"><label>Search<input type="text" id="searchBox" placeholder="Search..."></label></div>
+    <div class="form-group button-group"><button onclick="exportExcel()">Excel</button><button onclick="exportPDF()">PDF</button></div>
   </div>
-  <table id="medicineTable"><thead><tr><th>Medicine Name</th><th>Rack</th><th>Quantity</th><th>Expiry Date</th></tr></thead><tbody></tbody></table>
+  <table id="medicineTable"><thead><tr><th>Medicine</th><th>Rack</th><th>Qty</th><th>Expiry</th></tr></thead><tbody></tbody></table>
 </div>
 
+<!-- NEAR EXPIRY TAB -->
 <div id="nearExpiry" class="tab-content">
   <div class="alert" id="expiryAlert">No near-expiry medicines.</div>
   <div class="controls">
-    <div class="form-group"><label>⏳ Show expiring within<select id="expiryDaysNear"><option value="30">30</option><option value="60">60</option><option value="90">90</option><option value="100">100</option></select></label></div>
-    <div class="form-group button-group"><button onclick="renderNearExpiry()">🔄 Refresh</button><button onclick="exportNearExpiryExcel()">📊 Excel</button><button onclick="exportNearExpiryPDF()">📑 PDF</button></div>
+    <div class="form-group"><label>Show expiring within<select id="expiryDaysNear"><option value="30">30 days</option><option value="60">60 days</option><option value="90">90 days</option><option value="180">180 days</option></select></label></div>
+    <div class="form-group button-group"><button onclick="renderNearExpiry()">Refresh</button><button onclick="exportNearExpiryExcel()">Excel</button><button onclick="exportNearExpiryPDF()">PDF</button></div>
   </div>
-  <table id="nearExpiryTable"><thead><tr><th>Medicine Name</th><th>Rack</th><th>Quantity</th><th>Expiry Date</th><th>Status</th></tr></thead><tbody></tbody></table>
+  <table id="nearExpiryTable"><thead><tr><th>Medicine</th><th>Rack</th><th>Qty</th><th>Expiry</th><th>Status</th></tr></thead><tbody></tbody></table>
 </div>
 
+<!-- REPORTS TAB -->
 <div id="reports" class="tab-content">
-  <h3>Stock In Hand Report</h3>
-  <div class="controls"><div class="form-group button-group"><button onclick="exportStockReport()">📊 Export</button></div></div>
-  <table id="stockReportTable"><thead><tr><th>Medicine Name</th><th>Rack</th><th>Quantity</th><th>Expiry Date</th></tr></thead><tbody></tbody></table>
+  <div class="controls"><div class="form-group button-group"><button onclick="exportStockReport()">Export Stock Report</button></div></div>
+  <table id="stockReportTable"><thead><tr><th>Medicine</th><th>Rack</th><th>Qty</th><th>Expiry</th></tr></thead><tbody></tbody></table>
 </div>
 
+<!-- QR SCANNER TAB -->
 <div id="qr" class="tab-content">
-  <button onclick="startQRScanner()">Start Camera Scan</button>
+  <button onclick="startQRScanner()">Start Scan</button>
   <div id="qr-reader" style="width:300px; margin-top:15px;"></div>
-  <p>Scanned Result: <span id="qrResult"></span></p>
+  <p>Result: <span id="qrResult"></span></p>
 </div>
 </div>
 
 <script>
-// Firebase config
+// --- Firebase Init ---
 const firebaseConfig = {
   apiKey: "AIzaSyBj_9a5ep2lxKru6yEQqNLHqpSZOm7qi-s",
   authDomain: "smart-phc-dashboard.firebaseapp.com",
@@ -116,9 +117,13 @@ firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.database();
 
+// --- State ---
+let medicineData = [];
+const unique = arr => [...new Set(arr)];
+
+// --- Auth ---
 function login(){auth.signInWithEmailAndPassword(loginEmail.value,loginPassword.value).catch(e=>alert(e.message));}
 function logout(){auth.signOut();}
-
 auth.onAuthStateChanged(user=>{
   if(user){
     loginSection.style.display="none";
@@ -127,33 +132,43 @@ auth.onAuthStateChanged(user=>{
   } else {
     dashboard.style.display="none";
     loginSection.style.display="block";
+    medicineData = [];
   }
 });
 
-// Data helpers
+// --- Cloud Data ---
+function saveDataToCloud(){
+  db.ref("medicineStock").set(medicineData)
+    .then(()=>console.log("Saved to cloud"))
+    .catch(err=>console.error("Save error",err));
+}
+function loadDataFromCloud(){
+  db.ref("medicineStock").once("value").then(snap=>{
+    medicineData = snap.val() || [];
+    renderTable();
+  }).catch(err=>console.error("Load error",err));
+}
+
+// --- Helpers ---
 function toMMYYYY(dateStr){
   if (!dateStr) return "";
-  if (Object.prototype.toString.call(dateStr) === "[object Date]" && !isNaN(dateStr)){
+  if (Object.prototype.toString.call(dateStr) === "[object Date]" && !isNaN(dateStr))
     return ("0"+(dateStr.getMonth()+1)).slice(-2)+"/"+dateStr.getFullYear();
-  }
   dateStr = String(dateStr).trim();
   if (/^\d{2}\/\d{4}$/.test(dateStr)) return dateStr;
-  let mdy=dateStr.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+  let mdy = dateStr.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
   if (mdy) return ("0"+mdy[1]).slice(-2)+"/"+mdy[3];
-  let ymd=dateStr.match(/^(\d{4})[\/\-](\d{2})[\/\-](\d{2})$/);
+  let ymd = dateStr.match(/^(\d{4})[\/\-](\d{2})[\/\-](\d{2})$/);
   if (ymd) return ymd[2]+"/"+ymd[1];
-  let ym=dateStr.match(/^(\d{4})[\/\-](\d{1,2})$/);
+  let ym = dateStr.match(/^(\d{4})[\/\-](\d{1,2})$/);
   if (ym) return ("0"+ym[2]).slice(-2)+"/"+ym[1];
-  let yOnly=dateStr.match(/^(\d{4})$/);
-  if (yOnly) return "01/"+yOnly[1];
   if (!isNaN(dateStr) && Number(dateStr) > 30000){
-    let epoch = new Date((Number(dateStr)-25569)*86400*1000);
+    let epoch = new Date((Number(dateStr) - 25569) * 86400 * 1000);
     return ("0"+(epoch.getMonth()+1)).slice(-2)+"/"+epoch.getFullYear();
   }
-  let parsed=new Date(dateStr);
-  if (!isNaN(parsed)){
+  let parsed = new Date(dateStr);
+  if (!isNaN(parsed))
     return ("0"+(parsed.getMonth()+1)).slice(-2)+"/"+parsed.getFullYear();
-  }
   return dateStr;
 }
 function getLastDateOfExpiryMonth(mmYYYY){
@@ -171,134 +186,108 @@ function getExpiryLabel(dl){
   return "More than a year";
 }
 
-// Data & rendering
-let medicineData=[];
-const unique=arr=>[...new Set(arr)];
-
-function saveDataToCloud(){
-  db.ref('medicineStock').set(medicineData)
-    .then(()=>console.log("Saved to Firebase"))
-    .catch(err=>console.error("Save error",err));
-}
-function loadDataFromCloud(){
-  db.ref('medicineStock').once('value').then(snap=>{
-    medicineData = snap.val() || [];
-    renderTable();
-  }).catch(err=>console.error("Load error",err));
-}
-
-function mergeStock(ex,incoming){
-  for(let n of incoming){
-    let found=ex.find(o=>o["Medicine Name"].toLowerCase()===n["Medicine Name"].toLowerCase() && o["Expiry Date"]===n["Expiry Date"]);
-    found ? found.Quantity += n.Quantity : ex.push(n);
-  }
-  return ex;
-}
-
+// --- Table Rendering ---
 function renderTable(){
-  medicineTable.querySelector("tbody").innerHTML="";
-  let rack=rackFilter.value.toLowerCase(), search=searchBox.value.toLowerCase();
+  const tb = medicineTable.querySelector("tbody");
+  tb.innerHTML="";
+  let rackSel=rackFilter.value.toLowerCase(), search=searchBox.value.toLowerCase();
   let racks=unique(medicineData.map(m=>m.Rack).filter(Boolean));
-  rackFilter.innerHTML="<option value=''>All Racks</option>";racks.forEach(r=>rackFilter.innerHTML+=`<option value="${r}">${r}</option>`);
+  rackFilter.innerHTML="<option value=''>All Racks</option>";racks.forEach(r=>rackFilter.innerHTML+=`<option>${r}</option>`);
   medicineData.forEach(row=>{
-    if((rack && row.Rack?.toLowerCase()!==rack) || (search && !row["Medicine Name"].toLowerCase().includes(search))) return;
-    medicineTable.querySelector("tbody").innerHTML += `<tr><td>${row["Medicine Name"]}</td><td>${row.Rack||""}</td><td>${row.Quantity}</td><td>${toMMYYYY(row["Expiry Date"])}</td></tr>`;
+    if((rackSel && row.Rack?.toLowerCase()!==rackSel) || (search && !row["Medicine Name"].toLowerCase().includes(search))) return;
+    tb.innerHTML+=`<tr><td>${row["Medicine Name"]}</td><td>${row.Rack||""}</td><td>${row.Quantity}</td><td>${toMMYYYY(row["Expiry Date"])}</td></tr>`;
   });
 }
 
 function renderNearExpiry(){
-  let threshold = +expiryDaysNear.value, today = new Date();
+  const tb = nearExpiryTable.querySelector("tbody"); tb.innerHTML="";
+  let th = +expiryDaysNear.value, today = new Date();
   let list = medicineData.map(m=>{
-    let expDate = getLastDateOfExpiryMonth(toMMYYYY(m["Expiry Date"]));
-    let daysLeft = expDate ? Math.ceil((expDate-today)/(1000*60*60*24)) : null;
-    return {...m, daysLeft};
-  }).filter(m=>m.daysLeft!==null && m.daysLeft<=threshold).sort((a,b)=>a.daysLeft-b.daysLeft);
-
-  let tbody = nearExpiryTable.querySelector("tbody");
-  tbody.innerHTML="";
+    let exp = getLastDateOfExpiryMonth(toMMYYYY(m["Expiry Date"]));
+    let dl = exp ? Math.ceil((exp-today)/(1000*60*60*24)) : null;
+    return {...m, daysLeft:dl};
+  }).filter(m=>m.daysLeft!==null && m.daysLeft<=th).sort((a,b)=>a.daysLeft-b.daysLeft);
   list.forEach(r=>{
-    let cls = r.daysLeft<0 ? 'expired-row' : 'near-expiry-row';
-    tbody.innerHTML += `<tr class="${cls}"><td>${r["Medicine Name"]}</td><td>${r.Rack||""}</td><td>${r.Quantity}</td><td>${toMMYYYY(r["Expiry Date"])}</td><td>${getExpiryLabel(r.daysLeft)}</td></tr>`;
+    let cls = r.daysLeft<0 ? "expired-row" : "near-expiry-row";
+    tb.innerHTML+=`<tr class="${cls}"><td>${r["Medicine Name"]}</td><td>${r.Rack||""}</td><td>${r.Quantity}</td><td>${toMMYYYY(r["Expiry Date"])}</td><td>${getExpiryLabel(r.daysLeft)}</td></tr>`;
   });
 }
 
-// Events
-rackFilter.onchange=renderTable;
-searchBox.oninput=renderTable;
-expiryDaysNear.onchange=()=>{renderNearExpiry();};
+expiryDaysNear.onchange=renderNearExpiry;
+rackFilter.onchange=renderTable; searchBox.oninput=renderTable;
 
-// Import/Export
+// --- Import Excel ---
 excelFile.onchange=()=>{
-  const f=excelFile.files[0];
-  if(f){
-    const r=new FileReader();
-    r.onload=e=>{
-      const wb=XLSX.read(new Uint8Array(e.target.result),{type:'array'});
-      let data=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
-      data=data.map(m=>({...m,"Expiry Date":toMMYYYY(m["Expiry Date"])}));
-      medicineData=mergeStock(medicineData, data);
-      saveDataToCloud();
-      renderTable();
-    };
-    r.readAsArrayBuffer(f);
-  }
+  const f=excelFile.files[0]; if(!f) return;
+  const r=new FileReader();
+  r.onload=e=>{
+    const wb=XLSX.read(new Uint8Array(e.target.result),{type:'array'});
+    let data=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
+    data=data.map(m=>({...m,"Expiry Date":toMMYYYY(m["Expiry Date"])}));
+    mergeStock(data);
+  };
+  r.readAsArrayBuffer(f);
 };
 
+// --- Import PDF ---
 pdfFile.onchange=()=>{
-  if(!pdfFile.files.length) return alert("Select a PDF");
-  const r = new FileReader();
+  const f=pdfFile.files[0]; if(!f) return;
+  const r=new FileReader();
   r.onload=async function(){
     const pdf=await pdfjsLib.getDocument({data:new Uint8Array(this.result)}).promise;
     let text='';
     for(let p=1;p<=pdf.numPages;p++){
       const page=await pdf.getPage(p);
       const tc=await page.getTextContent();
-      text += tc.items.map(i=>i.str).join(' ')+'\n';
+      text+=tc.items.map(i=>i.str).join(' ')+'\n';
     }
-    let lines=text.split('\n'), data=[];
+    let lines=text.split('\n'), arr=[];
     for(let line of lines){
-      let m=line.match(/([A-Za-z0-9\s]+)\s+(\S+)\s+(\d+)/);
-      if(m) data.push({"Medicine Name":m[1].trim(),"Expiry Date":toMMYYYY(m[2].trim()),"Quantity":+m[3],"Rack":""});
+      let m=line.match(/([\w\s]+)\s+(\S+)\s+(\d+)/);
+      if(m) arr.push({"Medicine Name":m[1].trim(),"Expiry Date":toMMYYYY(m[2]),"Quantity":+m[3],"Rack":""});
     }
-    if(data.length){
-      medicineData=mergeStock(medicineData, data);
-      saveDataToCloud();
-      renderTable();
-    } else alert("No medicines found");
+    mergeStock(arr);
   };
-  r.readAsArrayBuffer(pdfFile.files[0]);
+  r.readAsArrayBuffer(f);
 };
 
-function exportExcel(){
-  XLSX.writeFile(XLSX.utils.book_append_sheet(XLSX.utils.book_new(),
-    XLSX.utils.json_to_sheet(medicineData),"Stock"),"medicine_stock.xlsx");
+// Merge new data & save
+function mergeStock(newData){
+  newData.forEach(n=>{
+    let ex=medicineData.find(o=>o["Medicine Name"].toLowerCase()===n["Medicine Name"].toLowerCase() && o["Expiry Date"]===n["Expiry Date"]);
+    ex ? ex.Quantity+=n.Quantity : medicineData.push(n);
+  });
+  saveDataToCloud();
+  renderTable();
 }
+
+// --- Exports ---
+function exportExcel(){XLSX.writeFile(XLSX.utils.book_append_sheet(XLSX.utils.book_new(),XLSX.utils.json_to_sheet(medicineData),"Stock"),"medicine_stock.xlsx");}
 function exportPDF(){html2pdf().from(medicineTable).save("medicine_stock.pdf");}
 function exportNearExpiryExcel(){
-  let d=+expiryDaysNear.value,today=new Date();
-  let list=medicineData.map(m=>({...m,daysLeft:Math.ceil((getLastDateOfExpiryMonth(toMMYYYY(m["Expiry Date"]))-today)/(1000*60*60*24))}))
-  .filter(m=>m.daysLeft<=d).sort((a,b)=>a.daysLeft-b.daysLeft);
-  XLSX.writeFile(XLSX.utils.book_append_sheet(XLSX.utils.book_new(),
-    XLSX.utils.json_to_sheet(list),"Near Expiry"),"near_expiry.xlsx");
+  let th=+expiryDaysNear.value,today=new Date();
+  let arr=medicineData.map(m=>{
+    let exp=getLastDateOfExpiryMonth(toMMYYYY(m["Expiry Date"]));
+    let dl=exp?Math.ceil((exp-today)/(1000*60*60*24)):null;
+    return {...m, daysLeft:dl};
+  }).filter(m=>m.daysLeft<=th);
+  XLSX.writeFile(XLSX.utils.book_append_sheet(XLSX.utils.book_new(),XLSX.utils.json_to_sheet(arr),"NearExpiry"),"near_expiry.xlsx");
 }
 function exportNearExpiryPDF(){html2pdf().from(nearExpiryTable).save("near_expiry.pdf");}
 function renderStockReportTable(){
-  let tb=stockReportTable.querySelector("tbody");tb.innerHTML="";
+  const tb=stockReportTable.querySelector("tbody"); tb.innerHTML="";
   medicineData.forEach(r=>tb.innerHTML+=`<tr><td>${r["Medicine Name"]}</td><td>${r.Rack||""}</td><td>${r.Quantity}</td><td>${toMMYYYY(r["Expiry Date"])}</td></tr>`);
 }
-function exportStockReport(){
-  XLSX.writeFile(XLSX.utils.book_append_sheet(XLSX.utils.book_new(),
-    XLSX.utils.json_to_sheet(medicineData),"Stock In Hand"),"stock_in_hand.xlsx");
+function exportStockReport(){XLSX.writeFile(XLSX.utils.book_append_sheet(XLSX.utils.book_new(),XLSX.utils.json_to_sheet(medicineData),"StockReport"),"stock_in_hand.xlsx");}
+
+// --- QR ---
+function startQRScanner(){
+  const qr=new Html5Qrcode("qr-reader");
+  qr.start({facingMode:"environment"},{fps:10,qrbox:250},msg=>{qrResult.textContent=msg;qr.stop();});
 }
 
-// QR
-function startQRScanner(){
-  const qrReader=new Html5Qrcode("qr-reader");
-  qrReader.start({facingMode:"environment"},{fps:10,qrbox:250},msg=>{
-    qrResult.textContent=msg;
-    qrReader.stop();
-  });
-}
+// Tab switching
+document.querySelectorAll(".tab-btn").forEach(b=>b.onclick=()=>{document.querySelectorAll(".tab-btn").forEach(x=>x.classList.remove("active"));b.classList.add("active");document.querySelectorAll(".tab-content").forEach(t=>t.classList.remove("active"));document.getElementById(b.dataset.tab).classList.add("active");if(b.dataset.tab==="nearExpiry")renderNearExpiry();if(b.dataset.tab==="reports")renderStockReportTable();});
 </script>
 </body>
 </html>
