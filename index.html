@@ -3,208 +3,158 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Smart PHC Medicine Store Dashboard - Secure</title>
+<title>PHC Dashboard - Secure Session</title>
 <style>
-  body {
-    font-family: Arial, sans-serif;
-    margin: 0;
-    background: #f4f8f9;
-    color: #333;
-  }
+  body { font-family: Arial, sans-serif; margin:0; background:#f5f7fa; color:#333; }
   header {
     background: linear-gradient(90deg,#0077b6,#00b894);
-    color: white;
-    padding: 18px 10px;
-    text-align: center;
-    font-size: 1.2em;
-    font-weight: bold;
-    letter-spacing: 1.2px;
+    color:white;
+    padding: 12px 16px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+  }
+  header h1 { font-size:1.2em; margin:0; }
+  header button {
+    background:#ff5252;
+    border:none;
+    color:white;
+    padding:7px 12px;
+    border-radius:4px;
+    cursor:pointer;
   }
   #authSection {
+    max-width:320px;
+    margin:60px auto;
     background:#e0f7fa;
-    padding:32px 10px 28px 10px;
+    padding:20px;
+    border-radius:8px;
     text-align:center;
-    max-width:340px;
-    margin:32px auto 0 auto;
-    border-radius:9px;
-    box-shadow:0 2px 8px rgba(0,0,0,0.08);
+    box-shadow:0 2px 8px rgba(0,0,0,0.1);
   }
   #authSection input {
-    padding:12px; margin:7px 0; width:90%; border-radius:7px; border:1px solid #b2dfdb;
-    max-width:270px; font-size:1em;
+    width:90%; padding:10px; margin:8px 0; border:1px solid #ccc; border-radius:6px;
   }
-  #authSection button { width:115px; margin:6px 4px 4px 4px;
-    font-weight:bold;
-  }
+  .btn { background:#00b894; color:white; border:none; padding:10px 16px; margin:8px 0; border-radius:6px; cursor:pointer; }
   nav {
-    display: flex;
-    background: #e0f2f1;
-    border-bottom: 2px solid #ccc;
-    overflow-x: auto;
-    padding: 0px 4px;
+    display:flex;
+    background:#e0f2f1;
+    border-bottom:2px solid #ccc;
+    overflow-x:auto;
   }
   nav button {
-    flex: 1;
-    min-width:120px;
-    padding: 13px 3px;
-    border: none;
-    background: transparent;
-    cursor: pointer;
-    font-size: 1em;
-    transition: background 0.3s;
-    border-radius:0;
-    outline:none;
+    flex:1;
+    padding:10px; border:none; background:transparent; cursor:pointer;
   }
-  nav button.active {
-    background: #b2dfdb;
-    font-weight: bold;
-    border-bottom: 3px solid #0077b6;
-    color:#0077b6;
-  }
-  section {
-    padding: 16px 6vw 23px 6vw;
-    display: none;
-  }
-  section.active { display: block; }
-  .card {
-    background: white;
-    padding: 15px;
-    border-radius: 8px;
-    box-shadow: 0 2px 7px rgba(0,0,0,0.07);
-    margin-bottom: 18px;
-    margin-top:7px;
-  }
-  .search-bar input {
-    width: 100%;
-    max-width:300px;
-    padding: 10px;
-    border: 1px solid #b2dfdb;
-    border-radius: 6px;
-    font-size:1em;
-    margin:8px 0 8px 0;
-  }
-  .table-container {
-    overflow-x: auto;
-  }
-  table {
-    width: 100%;
-    border-collapse: collapse;
-    margin-top: 4px;
-    font-size:1em;
-  }
-  th, td {
-    padding: 11px 7px;
-    text-align: left;
-    border-bottom: 1px solid #ececec;
-    word-break:break-word;
-  }
-  th {
-    background: #00a6b7;
-    color: white;
-    font-weight:500;
-    letter-spacing:0.04em;
-  }
-  .btn {
-    background: #00b894;
-    color: white;
-    border: none;
-    padding: 9px 13px;
-    margin: 2px 3px 3px 0px;
-    border-radius: 6px;
-    cursor: pointer;
-    font-size:1em;
-    font-weight:500;
-    outline:none;
-  }
-  .btn:active, .btn:hover {
-    background: #019874;
-  }
-  .alert {
-    padding: 10px;
-    background: #ffefef;
-    border: 1px solid #e57373;
-    color: #b30000;
-    border-radius: 5px;
-    margin-bottom: 9px;
-    font-size:0.98em;
-  }
-  /* Responsive layout for cards, nav, and table */
-  @media (max-width: 800px) {
-    section { padding: 8px 3vw 18px 3vw; }
-    .card { padding:10px; margin-bottom:11px;}
-    th,td {padding:7px 3px;}
-    nav button { font-size:0.98em; min-width:97px;}
-    #authSection {max-width:95vw;}
-    .search-bar input {max-width:98vw;}
-  }
-  @media (max-width: 480px){
-    section {padding-left:2vw;padding-right:2vw;}
-    nav button {padding: 10px 2px; min-width:80px; font-size:0.93em;}
-    th, td {font-size:0.92em;}
-    .search-bar input {font-size:0.94em;}
-    #authSection input {font-size:0.97em;}
-    .btn {font-size:0.97em;}
-    .card {padding:6px;}
-    header {font-size:1em;}
-  }
+  nav button.active { background:#b2dfdb; border-bottom:3px solid #0077b6; }
+  section { padding:20px; display:none; }
+  section.active { display:block; }
+  .card { background:white; padding:15px; border-radius:6px; box-shadow:0 1px 4px rgba(0,0,0,0.1); margin-bottom:16px; }
 </style>
 </head>
 <body>
 
-<header>💊 Smart PHC Medicine Store Dashboard</header>
+<!-- Header -->
+<header id="headerBar" style="display:none;">
+  <h1>💊 Smart PHC Dashboard</h1>
+  <button id="logoutBtn">Logout</button>
+</header>
 
+<!-- Login Form -->
 <div id="authSection">
-  <h2 style="font-size:1.15em;margin-bottom:1em;">Login to Access Dashboard</h2>
-  <input type="email" id="authEmail" placeholder="Email" autocomplete="username"><br>
-  <input type="password" id="authPass" placeholder="Password" autocomplete="current-password"><br>
+  <h2>Login to Dashboard</h2>
+  <input type="email" id="authEmail" placeholder="Email"><br>
+  <input type="password" id="authPass" placeholder="Password"><br>
   <button id="loginBtn" class="btn">Login</button>
-  <button id="logoutBtn" class="btn" style="display:none;">Logout</button>
-  <div id="authMsg" style="color:#b30000;margin:10px;font-size:0.98em;"></div>
+  <div id="authMsg" style="color:#b30000;margin-top:10px;"></div>
 </div>
 
+<!-- Navigation -->
 <nav id="navBar" style="display:none;">
-    <button class="tab-btn active" data-tab="stock">Medicine Stock</button>
-    <button class="tab-btn" data-tab="expiry">Expiry Alerts</button>
-    <button class="tab-btn" data-tab="scanner">QR Scanner</button>
-    <button class="tab-btn" data-tab="reports">Reports</button>
+  <button data-tab="home" class="active">Home</button>
+  <button data-tab="reports">Reports</button>
 </nav>
 
-<section id="stock" class="active">
-    <div class="card">
-        <h3 style="margin-bottom:0.7em;">📂 Upload &amp; Search Medicines</h3>
-        <input type="file" id="excelFile" accept=".xlsx, .xls" class="btn" style="margin-bottom:8px;">
-        <div class="search-bar">
-            <input type="text" id="searchInput" placeholder="🔍 Search medicine by name...">
-        </div>
-        <select id="rackFilter" class="btn">
-            <option value="">All Racks</option>
-            <option value="Rack 1">Rack 1</option>
-            <option value="Rack 2">Rack 2</option>
-            <option value="Rack 3">Rack 3</option>
-        </select>
-    </div>
-    <div class="card table-container">
-        <table id="medicineTable">
-            <thead>
-                <tr>
-                  <th>Medicine Name</th>
-                  <th>Rack</th>
-                  <th>Quantity</th>
-                  <th>Expiry</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr><td>Paracetamol</td><td>Rack 1</td><td>100</td><td>2025-09-01</td></tr>
-                <tr><td>Amoxicillin</td><td>Rack 2</td><td>50</td><td>2025-08-20</td></tr>
-            </tbody>
-        </table>
-    </div>
+<!-- Dashboard Sections -->
+<section id="home" class="active">
+  <div class="card">
+    <h3>Welcome</h3>
+    <p>This is your secure PHC dashboard.</p>
+  </div>
 </section>
-<section id="expiry">
-    <div class="card">
-        <h3>⚠ Near Expiry Medicines (Within 30 Days)</h3>
-        <div id="expiryAlerts"></div>
-    </div>
+
+<section id="reports">
+  <div class="card">
+    <h3>Reports</h3>
+    <p>Reports section content...</p>
+  </div>
 </section>
-<section id="scanner">
-    <div class="card">
+
+<!-- Firebase SDKs -->
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+<script>
+  // Firebase configuration (replace with your credentials)
+  const firebaseConfig = {
+    apiKey: "AIzaSyBj_9a5ep2lxKru6yEQqNLHqpSZOm7qi-s",
+    authDomain: "smart-phc-dashboard.firebaseapp.com",
+    projectId: "smart-phc-dashboard",
+    storageBucket: "smart-phc-dashboard.firebasestorage.app",
+    messagingSenderId: "519246980359",
+    appId: "1:519246980359:web:80d2b1dec39076ad2ad1a2",
+    measurementId: "G-QQX4EZK7KP"
+  };
+  firebase.initializeApp(firebaseConfig);
+  const auth = firebase.auth();
+
+  // Elements
+  const authSection = document.getElementById('authSection');
+  const headerBar = document.getElementById('headerBar');
+  const navBar = document.getElementById('navBar');
+  const loginBtn = document.getElementById('loginBtn');
+  const logoutBtn = document.getElementById('logoutBtn');
+  const authEmail = document.getElementById('authEmail');
+  const authPass = document.getElementById('authPass');
+  const authMsg = document.getElementById('authMsg');
+
+  // Login flow with SESSION persistence
+  loginBtn.onclick = () => {
+    authMsg.textContent = "";
+    auth.setPersistence(firebase.auth.Auth.Persistence.SESSION).then(() => {
+      return auth.signInWithEmailAndPassword(authEmail.value, authPass.value);
+    }).catch(err => { authMsg.textContent = err.message; });
+  };
+
+  // Logout
+  logoutBtn.onclick = () => auth.signOut();
+
+  // Auth state changes
+  auth.onAuthStateChanged(user => {
+    if (user) {
+      // Show dashboard
+      authSection.style.display = 'none';
+      headerBar.style.display = 'flex';
+      navBar.style.display = 'flex';
+      document.querySelectorAll('section').forEach(s => s.style.display = 'none');
+      document.getElementById('home').style.display = 'block';
+    } else {
+      // Show login
+      authSection.style.display = 'block';
+      headerBar.style.display = 'none';
+      navBar.style.display = 'none';
+      document.querySelectorAll('section').forEach(s => s.style.display = 'none');
+    }
+  });
+
+  // Tab navigation
+  navBar.querySelectorAll('button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      navBar.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('section').forEach(s => s.style.display = 'none');
+      btn.classList.add('active');
+      document.getElementById(btn.dataset.tab).style.display = 'block';
+    });
+  });
+</script>
+</body>
+</html>
