@@ -24,9 +24,44 @@ body{font-family:Arial,sans-serif;background:#f5fdfc;margin:0;}
 .auth-container button{width:100%;padding:10px;background:linear-gradient(90deg,#0077b6,#00b894);color:#fff;font-weight:bold;border:none;border-radius:5px;cursor:pointer;}
 header{background:linear-gradient(90deg,#0077b6,#00b894);color:#fff;padding:15px;font-size:22px;font-weight:bold;display:flex;justify-content:space-between;align-items:center;}
 #logoutBtn{background:#fff;color:#0077b6;border:none;padding:6px 12px;border-radius:5px;font-weight:bold;cursor:pointer;}
-nav{display:flex;background-color:#e3f6f5;border-bottom:1px solid #ccc;}
-nav button{flex:1;padding:12px;border:none;background:transparent;font-size:16px;cursor:pointer;}
-nav button.active{border-bottom:3px solid #0077b6;font-weight:bold;color:#0077b6;}
+/* --- IMPROVED NAVIGATION TABS --- */
+nav {
+  display: flex;
+  background: #f6fcfe;
+  border-bottom: 1px solid #cdd2d6;
+  justify-content: flex-start;
+  box-shadow: 0 2px 8px rgba(0,60,110,0.04);
+  padding: 0 16px;
+}
+nav button {
+  flex: none;
+  padding: 14px 36px;
+  margin: 0 4px -1px 0;
+  font-size: 17px;
+  font-weight: 500;
+  color: #226392;
+  background: none;
+  border: none;
+  border-radius: 8px 8px 0 0;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  border-bottom: 3px solid transparent;
+  outline: none;
+  position: relative;
+}
+nav button.active, 
+nav button:focus {
+  background: #fff;
+  color: #006268;
+  border-bottom: 3px solid #00b894;
+  font-weight: bold;
+  z-index: 2;
+}
+nav button:hover:not(.active) {
+  background: #e3f6f5;
+  color: #0092b4;
+}
+/* --- End nav --- */
 .tab-content{display:none;padding:20px;}
 .tab-content.active{display:block;}
 .alert{background:#ffeaa7;padding:10px;margin-bottom:15px;border-left:5px solid #fdcb6e;}
