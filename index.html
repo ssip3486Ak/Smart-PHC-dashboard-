@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Smart PHC Dashboard</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: linear-gradient(to right, #e0f7fa, #e8f5e9);
+      margin: 0;
+      padding: 0;
+    }
+    header {
+      background: #00796b;
+      color: white;
+      padding: 1rem;
+      text-align: center;
+      font-size: 1.5rem;
+    }
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      margin-top: 1rem;
+      background: white;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    }
+    th, td {
+      border: 1px solid #ccc;
+      padding: 0.5rem;
+      text-align: left;
+    }
+    th {
+      background: #004d40;
+      color: white;
+      position: sticky;
+      top: 0;
+      z-index: 2;
+    }
+    tr:nth-child(even) {
+      background: #f1f8e9;
+    }
+    .container {
+      padding: 1rem;
+    }
+    .login-btn {
+      padding: 0.5rem 1rem;
+      background: #0288d1;
+      color: white;
+      border: none;
+      cursor: pointer;
+      margin-bottom: 1rem;
+    }
+    .login-btn:hover {
+      background: #0277bd;
+    }
+  </style>
+</head>
+<body>
+  <header>Smart PHC Dashboard</header>
+  <div class="container">
+    <button id="loginBtn" class="login-btn">Login with Google</button>
+    <table id="medicineTable">
+      <thead>
+        <tr>
+          <th>Medicine</th>
+          <th>Batch</th>
+          <th>Expiry</th>
+          <th>Quantity</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <script type="module">
+    // Firebase Config
+    const firebaseConfig = {
+      apiKey: "AIzaSyBj_9a5ep2lxKru6yEQqNLHqpSZOm7qi-s",
+      authDomain: "smart-phc-dashboard.firebaseapp.com",
+      projectId: "smart-phc-dashboard",
+      storageBucket: "smart-phc-dashboard.firebasestorage.app",
+      messagingSenderId: "519246980359",
+      appId: "1:519246980359:web:80d2b1dec39076ad2ad1a2",
+      measurementId: "G-QQX4EZK7KP"
+    };
+
+    // Firebase SDK imports
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
+    import { getFirestore, collection, getDocs, query } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
+    import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const auth = getAuth(app);
+    const provider = new GoogleAuthProvider();
+
+    const loginBtn = document.getElementById("loginBtn");
+    const tableBody = document.querySelector("#medicineTable tbody");
+
+    loginBtn.addEventListener("click", () => {
+      signInWithPopup(auth, provider).catch(err => console.error(err));
+    });
+
+    onAuthStateChanged(auth, (user) => {
+      if (user) {
+        loginBtn.style.display = "none";
+        loadMedicines();
+      } else {
+        loginBtn.style.display = "inline-block";
+        tableBody.innerHTML = "";
+      }
+    });
+
+    async function loadMedicines() {
+      try {
+        // Load from cache first
+        const cachedData = localStorage.getItem("medicines");
+        if (cachedData) renderTable(JSON.parse(cachedData));
+
+        const q = query(collection(db, "medicines"));
+        const snapshot = await getDocs(q);
+        const medicines = {};
+
+        snapshot.forEach(doc => {
+          const data = doc.data();
+          const key = `${data.name}_${data.batch}_${data.expiry}`;
+          if (!medicines[key]) {
+            medicines[key] = { ...data };
+          } else {
+            medicines[key].quantity += data.quantity;
+          }
+        });
+
+        const mergedList = Object.values(medicines);
+        renderTable(mergedList);
+        localStorage.setItem("medicines", JSON.stringify(mergedList));
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    function renderTable(data) {
+      tableBody.innerHTML = "";
+      data.forEach(item => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${item.name}</td>
+          <td>${item.batch}</td>
+          <td>${item.expiry}</td>
+          <td>${item.quantity}</td>
+        `;
+        tableBody.appendChild(tr);
+      });
+    }
+  </script>
+</body>
+</html>
