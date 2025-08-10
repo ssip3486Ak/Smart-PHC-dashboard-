@@ -19,28 +19,103 @@
 
 <style>
 body {font-family: Arial, sans-serif; background: #f5fdfc; margin: 0;}
+/* --- Auth --- */
 .auth-container {max-width: 360px; margin: 80px auto; background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);}
 .auth-container input {width: 100%; padding: 8px; margin-bottom: 10px; border: 1px solid #ccc; border-radius: 5px;}
-.auth-container button {width: 100%; padding: 10px; background: linear-gradient(90deg,#0077b6,#00b894); color: #fff; font-weight: bold; border: none; border-radius: 5px; cursor: pointer;}
-header {background: linear-gradient(90deg, #0077b6, #00b894); color: #fff; padding: 15px; font-size: 20px; font-weight: bold; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;}
-#logoutBtn {background: #fff; color: #0077b6; border: none; padding: 6px 12px; border-radius: 5px; font-weight: bold; cursor: pointer;}
-nav {display: flex; flex-wrap: wrap; background: #f6fcfe; border-bottom: 1px solid #cdd2d6; box-shadow: 0 2px 8px rgba(0,60,110,0.04); padding: 0 10px;}
-nav button {flex: none; padding: 12px 24px; margin: 0 4px -1px 0; font-size: 16px; font-weight: 500; color: #226392; background: none; border: none; border-radius: 8px 8px 0 0; cursor: pointer; transition: background 0.15s, color 0.15s; border-bottom: 3px solid transparent;}
-nav button.active, nav button:focus {background: #fff; color: #006268; border-bottom: 3px solid #00b894; font-weight: bold; z-index: 2;}
-nav button:hover:not(.active) {background: #e3f6f5; color: #0092b4;}
-.tab-content {display: none; padding: 20px;}
+.auth-container button {width: 100%; padding: 10px; background: linear-gradient(90deg,#0077b6,#00b894); color: #fff; font-weight: bold; border: none; border-radius: 5px; cursor: pointer; transition: box-shadow 0.3s;}
+.auth-container button:hover {box-shadow: 0 2px 8px #20bda7a0;}
+/* --- HEADER w/ LOGO, GRADIENT and LOGOUT RIGHT --- */
+header {
+  display: flex; justify-content: space-between; align-items: center; padding: 15px 20px;
+  background: linear-gradient(90deg, #0077b6 0%, #00b894 100%);
+  color: white; font-weight: 700; font-size: 22px; user-select: none;
+  box-shadow: 0 3px 14px rgba(0,0,0,0.10);
+  transition: background 0.4s, box-shadow 0.4s;
+  position: relative;
+}
+.header-left {display: flex; align-items: center; gap: 13px;}
+.logo {width: 40px; height: 40px; object-fit: cover; border-radius: 8px; box-shadow: 0 2px 8px #00b89422;}
+#logoutBtn {
+  margin-left: auto;
+  background: #fff;
+  color: #0077b6;
+  border: none;
+  padding: 7px 18px;
+  border-radius: 5px;
+  font-weight: bold;
+  cursor: pointer;
+  font-size: 16px;
+  box-shadow: 0 2px 4px #0077b688;
+  transition: background-color 0.27s, color 0.27s, box-shadow 0.3s, transform 0.2s;
+}
+#logoutBtn:hover {background-color: #0077b6; color: #fff; box-shadow: 0 2px 14px #00b8944C; transform: scale(1.04);}
+nav {
+  background: #e0f7fa;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.08);
+  padding: 0 10px;
+  display: flex; flex-wrap: wrap;
+  transition: background 0.3s;
+}
+/* --- TAB BUTTONS --- */
+nav button {
+  background-color: #b2ebf2;
+  color: #00796b;
+  border: none;
+  border-radius: 8px 8px 0 0;
+  cursor: pointer;
+  font-weight: 600;
+  padding: 12px 24px;
+  margin: 0 4px -1px 0;
+  font-size: 1rem;
+  border-bottom: 3px solid transparent;
+  transition: background-color 0.3s, color 0.3s, transform 0.28s cubic-bezier(.4,2.2,.3,1), box-shadow 0.3s;
+  outline: none;
+  box-shadow: 0 1px 8px transparent;
+  z-index: 1;
+}
+nav button:hover:not(.active) {
+  background-color: #80deea;
+  color: #004d40;
+  transform: scale(1.05);
+  box-shadow: 0 2px 8px #00b89428;
+}
+nav button.active {
+  background-color: #004d40;
+  color: #fff;
+  font-weight: 700;
+  transform: scale(1.14);
+  box-shadow: 0 6px 12px #00b89433;
+  border-bottom: 3px solid #00b894;
+  z-index: 2;
+}
+/* --- TABS BG --- */
+.tab-content {
+  display: none;
+  padding: 28px 20px 18px 20px;
+  background: #f7ffff;
+  border-radius: 0 0 10px 10px;
+  min-height: 80px;
+  animation: fadeInTabs 0.34s cubic-bezier(.17,.67,.83,.67);
+  transition: box-shadow 0.5s;
+  box-shadow: 0 1px 10px #b2ebf233;
+}
+@keyframes fadeInTabs { from { opacity:0; transform: translateY(16px);} to{ opacity:1; transform: translateY(0);} }
 .tab-content.active {display: block;}
 .alert {background: #ffeaa7; padding: 10px; margin-bottom: 15px; border-left: 5px solid #fdcb6e;}
 .controls {display: flex; flex-wrap: wrap; gap: 18px; align-items: flex-end; margin-bottom: 15px;}
 .form-group {display: flex; flex-direction: column;}
 .form-group label {color: #0077b6; font-size: 14px; margin-bottom: 4px; font-weight: 600;}
 input[type=file], input[type=text], select {border-radius: 8px; border: 1px solid #b0e2e0; padding: 6px 10px; font-size: 15px; background: #e3f6f5;}
-button {border-radius: 8px; background: linear-gradient(90deg,#0077b6,#00b894); border: none; padding: 8px 14px; font-size: 14px; font-weight: 600; cursor: pointer; color: #fff;}
-table {width: 100%; border-collapse: collapse; background: #fff;}
+button {border-radius: 8px; background: linear-gradient(90deg,#0077b6,#00b894); border: none; padding: 8px 16px; font-size: 14px; font-weight: 600; cursor: pointer; color: #fff; box-shadow: 0 1px 6px #00b89419; transition: all 0.2s;}
+button:hover {background: linear-gradient(90deg,#00b894,#0077b6); filter: brightness(1.1); box-shadow: 0 2px 11px #00b89428;}
+#stopScanBtn { background: #c75252!important; }
+#stopScanBtn:hover { background: #97253a!important; }
+table {width: 100%; border-collapse: collapse; background: #fff; transition: box-shadow 0.3s;}
 th, td {border: 1px solid #ccc; padding: 8px; text-align: center;}
-th {background: #d0f0ec;}
-.expired-row {background: lightcoral; color: white; font-weight: bold;}
-.near-expiry-row {background: khaki; font-weight: bold;}
+th {background: #d0f0ec; color: #135e62;}
+.expired-row {background: #f44336; color: white; font-weight: bold;}
+.near-expiry-row {background: #fff599; font-weight: bold;}
+/* --- Responsive --- */
 @media (max-width: 768px) {
  header {flex-direction: column; text-align: center;}
  nav {justify-content: center;}
@@ -48,6 +123,9 @@ th {background: #d0f0ec;}
  .form-group {width: 100%;}
  table {display: block; overflow-x: auto;}
  nav button {flex: 1 1 auto; text-align: center;}
+ .tab-content {padding: 16px 3vw;}
+ .header-left {justify-content: center;}
+ .logo {width: 32px; height: 32px;}
 }
 </style>
 </head>
@@ -62,7 +140,10 @@ th {background: #d0f0ec;}
 
 <div id="dashboard" style="display:none;">
   <header>
-    Smart PHC
+    <div class="header-left">
+      <img src="https://i.imgur.com/6YkP3uF.png" alt="Smart PHC Logo" class="logo" />
+      <span>Smart PHC</span>
+    </div>
     <button id="logoutBtn" onclick="logout()">Logout</button>
   </header>
   <nav>
