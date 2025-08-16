@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Smart PHC Medicine Store Dashboard</title>
+
+<!-- External libs -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<script src="https://unpkg.com/html5-qrcode"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js"></script>
+
+<style>
+body {
+  font-family: Arial, sans-serif;
+  margin: 0;
+  background-image:
+    repeating-linear-gradient(45deg, rgba(255,255,255,0.15), rgba(255,255,255,0.15) 10px, transparent 10px, transparent 20px),
+    linear-gradient(135deg, #d0f0f0, #b0e5d8);
+  color: #333;
+}
+header {
+  background: linear-gradient(90deg, #0077b6, #00b894);
+  color: white;
+  padding: 15px 20px;
+  font-size: 1.5em;
+  font-weight: bold;
+  text-align: center;
+}
+nav {
+  display: flex;
+  background: #e0f2f1;
+  overflow-x: auto;
+  border-bottom: 2px solid #ccc;
+}
+nav button {
+  flex: 1;
+  padding: 12px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 1em;
+}
+nav button.active {
+  background: #b2dfdb;
+  font-weight: bold;
+  border-bottom: 3px solid #0077b6;
+}
+section { padding: 20px; display: none; }
+section.active { display: block; }
+.card {
+  background: white;
+  padding: 15px;
+  border-radius: 8px;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+  margin-bottom: 20px;
+}
+.search-bar input {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+}
+.table-container { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+th, td { padding: 10px; text-align: left; border-bottom: 1px solid #ddd; }
+th { background: #0077b6; color: white; }
+.btn {
+  background: #00b894;
+  color: white;
+  border: none;
+  padding: 8px 12px;
+  margin: 3px;
+  border-radius: 5px;
+  cursor: pointer;
+}
+.btn:hover { background: #019874; }
+.alert {
+  padding: 10px;
+  background: #ffcccc;
+  border: 1px solid #ff4d4d;
+  color: #b30000;
+  border-radius: 5px;
+  margin-bottom: 10px;
+}
+.auth-container {
+  max-width: 360px;
+  margin: 48px auto;
+  background: #fff;
+  padding: 24px;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+}
+.auth-container h2 {
+  text-align: center;
+  margin-bottom: 20px;
+  color: #0077b6;
+}
+.auth-container input {
+  width: 100%;
+  padding: 10px;
+  margin-bottom: 12px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  font-size: 15px;
+}
+.auth-container button {
+  width: 100%;
+  padding: 10px;
+  background: #00b894;
+  color: #fff;
+  font-weight: 600;
+  border: none;
+  border-radius: 5px;
+  font-size: 16px;
+  cursor: pointer;
+}
+.auth-container button:hover { background: #019874; }
+#deductionConfirmationModal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0,0,0,0.5);
+  display: none; 
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+#deductionConfirmationModal .modal-content {
+  background: white;
+  padding: 20px;
+  border-radius: 8px;
+  max-width: 400px;
+  width: 90%;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+}
+#deductionConfirmationModal .modal-content h3 {
+  margin-top: 0;
+}
+#deductionConfirmationModal .modal-content button {
+  margin-right: 10px;
+}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="loginSection" class="auth-container">
+  <h2>Smart PHC Login</h2>
+  <input type="email" id="loginEmail" placeholder="Email" />
+  <input type="password" id="loginPassword" placeholder="Password" />
+  <button onclick="login()">Login</button>
+</div>
+
+<!-- DASHBOARD -->
+<div id="dashboard" style="display:none;">
+<header>
+  💊 Smart PHC Medicine Store Dashboard
+</header>
+
+<nav>
+  <button class="tab-btn active" data-tab="stock">Medicine Stock</button>
+  <button class="tab-btn" data-tab="expiry">Near Expiry Alerts</button>
+  <button class="tab-btn" data-tab="scanner">QR Code Scanner</button>
+  <button class="tab-btn" data-tab="reports">Reports</button>
+</nav>
+
+<section id="stock" class="active">
+  <div class="card">
+    <h3>📂 Upload Medicine Stock File</h3>
+    <input type="file" id="excelFile" accept=".xlsx,.xls" class="btn" />
+    <input type="file" id="pdfFile" accept="application/pdf" class="btn" />
+    <div style="margin-top:10px;">
+      <button id="deductionBtn" class="btn">Deduct Medicines (Photo/PDF)</button>
+      <input type="file" id="deductionFile" accept="application/pdf,image/*" style="display:none" />
+    </div>
+    <div class="search-bar" style="margin-top:10px;">
+      <input type="text" id="searchBox" placeholder="🔍 Search medicine..." />
+    </div>
+    <select id="rackFilter" class="btn" style="margin-top:10px;"><option value="">All Racks</option></select>
+  </div>
+  <div class="card table-container"><table id="medicineTable"><thead><tr><th>Medicine</th><th>Rack</th><th>Qty</th><th>Expiry</th></tr></thead><tbody></tbody></table></div>
+</section>
+
+<section id="expiry">
+  <div class="card">
+    <h3>⚠ Near Expiry Medicines</h3>
+    <select id="expiryDaysNear" class="btn">
+      <option value="30">30 days</option><option value="60">60 days</option><option value="90">90 days</option><option value="180">180 days</option>
+    </select>
+    <button onclick="renderNearExpiry()" class="btn">Refresh</button>
+    <button onclick="exportNearExpiryExcel()" class="btn">Export Excel</button>
+    <button onclick="exportNearExpiryPDF()" class="btn">Export PDF</button>
+    <div id="expiryAlerts" style="margin-top:10px;"></div>
+    <div class="table-container"><table id="nearExpiryTable"><thead><tr><th>Medicine</th><th>Rack</th><th>Qty</th><th>Expiry</th><th>Status</th></tr></thead><tbody></tbody></table></div>
+  </div>
+</section>
+
+<section id="scanner">
+  <div class="card">
+    <h3>📷 QR Code Scanner</h3>
+    <button id="startScanBtn" class="btn" onclick="startQRScanner()">Start Camera</button>
+    <button id="stopScanBtn" class="btn" style="display:none;background:#d9534f;" onclick="stopQRScanner()">Stop</button>
+    <div id="qr-reader" style="width:300px;display:none;margin-top:15px;"></div>
+    <p id="qrResult"></p>
+  </div>
+</section>
+
+<section id="reports">
+  <div class="card">
+    <h3>📊 Export Reports</h3>
+    <button onclick="exportExcel()" class="btn">Export Stock Excel</button>
+    <button onclick="exportPDF()" class="btn">Export Stock PDF</button>
+    <button onclick="exportStockReport()" class="btn">Export Stock Report Excel</button>
+  </div>
+  <div class="card table-container"><table id="stockReportTable"><thead><tr><th>Medicine</th><th>Rack</th><th>Qty</th><th>Expiry</th></tr></thead><tbody></tbody></table></div>
+</section>
+
+<!-- Deduction Confirmation Modal -->
+<div id="deductionConfirmationModal">
+  <div class="modal-content">
+    <h3>Confirm Deduction</h3>
+    <p id="deductionSummary"></p>
+    <button id="confirmDeductionBtn" class="btn">Confirm</button>
+    <button id="cancelDeductionBtn" class="btn" style="background:#d9534f;">Cancel</button>
+  </div>
+</div>
+
+<!-- LOGOUT AT BOTTOM -->
+<div style="text-align:center; padding:20px;">
+  <button onclick="logout()" class="btn" style="background:#d9534f;">Logout</button>
+</div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
+import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
+import { getDatabase, ref, set, get, child } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyBj_9a5ep2lxKru6yEQqNLHqpSZOm7qi-s",
+  authDomain: "smart-phc-dashboard.firebaseapp.com",
+  databaseURL: "https://smart-phc-dashboard-default-rtdb.firebaseio.com",
+  projectId: "smart-phc-dashboard",
+  storageBucket: "smart-phc-dashboard.firebasestorage.app",
+  messagingSenderId: "519246980359",
+  appId: "1:519246980359:web:80d2b1dec39076ad2ad1a2",
+  measurementId: "G-QQX4EZK7KP"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getDatabase(app);
+
+let medicineData = [];
+let currentDeduction = null;
+
+window.login = async ()=>{ try{ await signInWithEmailAndPassword(auth, loginEmail.value, loginPassword.value); }catch(e){ alert(e.message); } };
+window.logout = ()=>{ signOut(auth); };
+onAuthStateChanged(auth,(user)=>{ if(user){ loginSection.style.display="none"; dashboard.style.display="block"; loadDataFromCloud(); } else{ dashboard.style.display="none"; loginSection.style.display="block"; medicineData=[];} });
+
+const unique=a=>[...new Set(a.map(v=>(v||"").trim()).filter(Boolean))];
+function saveDataToCloud(){ set(ref(db,"medicineStock"), medicineData); }
+function loadDataFromCloud(){ get(child(ref(db),"medicineStock")).then(snap=>{ medicineData=snap.val()||[]; renderTable(); }); }
+
+function toMMYYYY(s){ if(!s)return""; let p=new Date(s); if(!isNaN(p))return ("0"+(p.getMonth()+1)).slice(-2)+"/"+p.getFullYear(); return s; }
+function getLastDateOfExpiryMonth(m){ if(!m)return null; let[mm,yy]=m.split("/"); return new Date(parseInt(yy),parseInt(mm),0); }
+function getExpiryLabel(d){ if(d<0)return"Expired"; if(d===0)return"Expiring Today"; if(d<=30)return d+" days left"; if(d<=60)return Math.round(d/7)+" weeks"; if(d<=365)return"About "+Math.floor(d/30)+" months"; return"More than a year"; }
+
+function renderTable(){ const tb=medicineTable.querySelector("tbody"); tb.innerHTML=""; let s=searchBox.value.toLowerCase(),f=rackFilter.value.toLowerCase(); let racks=unique(medicineData.map(m=>m.Rack)); rackFilter.innerHTML="<option value=''>All Racks</option>"+racks.map(r=>`<option>${r}</option>`).join(""); medicineData.forEach(row=>{ if(f && (row.Rack||"").toLowerCase()!==f)return; if(s && !(row["Medicine Name"]||"").toLowerCase().includes(s))return; tb.innerHTML+=`<tr><td>${row["Medicine Name"]}</td><td>${row.Rack||""}</td><td>${row.Quantity}</td><td>${toMMYYYY(row["Expiry Date"])}</td></tr>`; }); }
+function renderNearExpiry(){ const tb=nearExpiryTable.querySelector("tbody"), alertBox=document.getElementById('expiryAlerts'); tb.innerHTML=""; alertBox.innerHTML=""; let th=+expiryDaysNear.value,today=new Date(); let list=medicineData.map(m=>{let e=getLastDateOfExpiryMonth(toMMYYYY(m["Expiry Date"])); let dl=e?Math.ceil((e-today)/(1000*60*60*24)):null; return {...m,daysLeft:dl};}).filter(m=>m.daysLeft!==null&&m.daysLeft<=th).sort((a,b)=>a.daysLeft-b.daysLeft); if(!list.length)alertBox.innerHTML="<div>No medicines nearing expiry.</div>"; list.forEach(r=>{tb.innerHTML+=`<tr><td>${r["Medicine Name"]}</td><td>${r.Rack||""}</td><td>${r.Quantity}</td><td>${toMMYYYY(r["Expiry Date"])}</td><td>${getExpiryLabel(r.daysLeft)}</td></tr>`; alertBox.innerHTML+=`<div class="alert">${r["Medicine Name"]} - Expires ${toMMYYYY(r["Expiry Date"])}</div>`; }); }
+
+expiryDaysNear.onchange=renderNearExpiry; rackFilter.onchange=renderTable; searchBox.oninput=renderTable;
+
+excelFile.onchange=()=>{ const f=excelFile.files[0]; if(!f)return; const r=new FileReader(); r.onload=e=>{ const wb=XLSX.read(new Uint8Array(e.target.result),{type:'array'}); let d=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]); d=d.map(m=>({...m,"Expiry Date":toMMYYYY(m["Expiry Date"])})); mergeStock(d); }; r.readAsArrayBuffer(f); };
+pdfFile.onchange=()=>{ const f=pdfFile.files[0]; if(!f)return; const r=new FileReader(); r.onload=async function(){ const pdf=await pdfjsLib.getDocument({data:new Uint8Array(this.result)}).promise; let text=''; for(let p=1;p<=pdf.numPages;p++){const pg=await pdf.getPage(p); const tc=await pg.getTextContent(); text+=tc.items.map(i=>i.str).join(' ')+'\n';} let arr=[]; for(let line of text.split('\n')){let m=line.match(/([\w\s]+)\s+(\S+)\s+(\d+)/); if(m)arr.push({"Medicine Name":m[1].trim(),"Expiry Date":toMMYYYY(m[2]),"Quantity":+m[3],"Rack":""});} mergeStock(arr); }; r.readAsArrayBuffer(f); };
+function mergeStock(newData){ newData.forEach(n=>{ let ex=medicineData.find(o=>o["Medicine Name"].toLowerCase()===n["Medicine Name"].toLowerCase()&&o["Expiry Date"]===n["Expiry Date"]); ex?ex.Quantity+=n.Quantity:medicineData.push(n); }); saveDataToCloud(); renderTable(); }
+
+function exportExcel(){ XLSX.writeFile(XLSX.utils.book_append_sheet(XLSX.utils.book_new(),XLSX.utils.json_to_sheet(medicineData),"Stock"),"medicine_stock.xlsx"); }
+function exportPDF(){ html2pdf().from(medicineTable).save("medicine_stock.pdf"); }
+function exportNearExpiryExcel(){ let th=+expiryDaysNear.value,today=new Date(); let arr=medicineData.map(m=>{let e=getLastDateOfExpiryMonth(toMMYYYY(m["Expiry Date"])); let dl=e?Math.ceil((e-today)/(1000*60*60*24)):null; return {...m,daysLeft:dl};}).filter(m=>m.daysLeft<=th); XLSX.writeFile(XLSX.utils.book_append_sheet(XLSX.utils.book_new(),XLSX.utils.json_to_sheet(arr),"NearExpiry"),"near_expiry.xlsx"); }
+function exportNearExpiryPDF(){ html2pdf().from(nearExpiryTable).save("near_expiry.pdf"); }
+function renderStockReportTable(){ const tb=stockReportTable.querySelector("tbody"); tb.innerHTML=""; medicineData.forEach(r=>tb.innerHTML+=`<tr><td>${r["Medicine Name"]}</td><td>${r.Rack||""}</td><td>${r.Quantity}</td><td>${toMMYYYY(r["Expiry Date"])}</td></tr>`); }
+function exportStockReport(){ XLSX.writeFile(XLSX.utils.book_append_sheet(XLSX.utils.book_new(),XLSX.utils.json_to_sheet(medicineData),"StockReport"),"stock_in_hand.xlsx"); }
+
+let qrScanner=null;
+function startQRScanner(){ if(!qrScanner) qrScanner=new Html5Qrcode("qr-reader"); document.getElementById("qr-reader").style.display=""; startScanBtn.style.display="none"; stopScanBtn.style.display=""; qrResult.textContent=""; qrScanner.start({facingMode:"environment"},{fps:10,qrbox:250},msg=>{ handleQRResult(msg); }).catch(err=>{ qrResult.textContent="Camera error: "+err; stopQRScanner(); }); }
+function stopQRScanner(){ startScanBtn.style.display=""; stopScanBtn.style.display="none"; document.getElementById("qr-reader").style.display="none"; if(qrScanner){qrScanner.stop().then(()=>qrScanner.clear()).catch(()=>{});} }
+window.startQRScanner=startQRScanner; window.stopQRScanner=stopQRScanner;
+
+document.querySelectorAll(".tab-btn").forEach(b=>b.onclick=()=>{ document.querySelectorAll(".tab-btn").forEach(x=>x.classList.remove("active")); b.classList.add("active"); document.querySelectorAll("section").forEach(s=>s.classList.remove("active")); document.getElementById(b.dataset.tab).classList.add("active"); if(b.dataset.tab==="expiry")renderNearExpiry(); if(b.dataset.tab==="reports")renderStockReportTable(); });
+
+// Deduction related logic
+const deductionBtn = document.getElementById('deductionBtn');
+const deductionFile = document.getElementById('deductionFile');
+const deductionModal = document.getElementById('deductionConfirmationModal');
+const deductionSummary = document.getElementById('deductionSummary');
+const confirmDeductionBtn = document.getElementById('confirmDeductionBtn');
+const cancelDeductionBtn = document.getElementById('cancelDeductionBtn');
+
+deductionBtn.addEventListener('click', () => {
+  deductionFile.click();
+});
+
+deductionFile.addEventListener('change', async () => {
+  const file = deductionFile.files[0];
+  if (!file) return;
+  try {
+    let extractedData = null;
+    if (file.type === 'application/pdf') {
+      extractedData = await extractDataFromPDF(file);
+    } else if (file.type.startsWith('image/')) {
+      extractedData = await extractDataFromImage(file);
+    }
+    if (extractedData && extractedData.medicine && typeof extractedData.quantity === 'number') {
+      // Show confirmation modal with extracted data summary
+      currentDeduction = extractedData;
+      deductionSummary.textContent = `Medicine: ${extractedData.medicine}\nQuantity to Deduct: ${extractedData.quantity}\nDate: ${extractedData.date || new Date().toLocaleDateString()}`;
+      deductionModal.style.display = 'flex';
+    } else {
+      alert('Could not extract valid deduction data from the uploaded file.');
+    }
+  } catch (e) {
+    alert('Error processing the file: ' + e.message);
+  }
+  deductionFile.value = ''; // reset file input for next upload
+});
+
+confirmDeductionBtn.addEventListener('click', () => {
+  if (!currentDeduction) return;
+  applyDeduction(currentDeduction.medicine, currentDeduction.quantity);
+  currentDeduction = null;
+  deductionModal.style.display = 'none';
+});
+
+cancelDeductionBtn.addEventListener('click', () => {
+  currentDeduction = null;
+  deductionModal.style.display = 'none';
+});
+
+async function extractDataFromPDF(file) {
+  const arrayBuffer = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+  let text = '';
+  for (let p = 1; p <= pdf.numPages; p++) {
+    const page = await pdf.getPage(p);
+    const content = await page.getTextContent();
+    text += content.items.map(i => i.str).join(' ') + '\n';
+  }
+  // Basic pattern to extract medicine name, quantity, and optional expiry (Improvement may be needed depending on formats)
+  // Example line pattern: MedicineName ExpiryDate Quantity
+  const lines = text.split('\n');
+  for (let line of lines) {
+    let match = line.match(/([\w\s]+)\s+(\S+)\s+(\d+)/);
+    if (match) {
+      return {
+        medicine: match[1].trim(),
+        date: match[2],
+        quantity: parseInt(match[3], 10)
+      };
+    }
+  }
+  throw new Error('No valid deduction data found in PDF.');
+}
+
+async function extractDataFromImage(file) {
+  // For simplicity, in this sample we don't implement OCR here.
+  // In real app, integrate with OCR API (e.g., Tesseract.js or cloud service) to extract text from image.
+  alert('Image extraction not implemented. Please upload a PDF voucher.');
+  return null;
+}
+
+function applyDeduction(medicineName, quantity) {
+  const item = medicineData.find(m => m["Medicine Name"].toLowerCase() === medicineName.toLowerCase());
+  if (!item) {
+    alert(`Medicine '${medicineName}' not found in stock.`);
+    return;
+  }
+  if (item.Quantity < quantity) {
+    alert(`Deduction quantity (${quantity}) exceeds current stock (${item.Quantity}).`);
+    return;
+  }
+  item.Quantity -= quantity;
+  saveDataToCloud();
+  renderTable();
+  alert(`Deducted ${quantity} units from ${medicineName}.`);
+}
+
+// QR Code result handler with confirmation to open
+function handleQRResult(msg) {
+  qrResult.textContent = `QR Code Content: ${msg}`;
+  stopQRScanner();
+  if (isValidUrl(msg)) {
+    if (confirm(`The QR code contains a URL:\n${msg}\n\nDo you want to open it in a new tab?`)) {
+      window.open(msg, '_blank');
+    }
+  } else {
+    alert('Scanned QR code content is not a valid URL.');
+  }
+}
+
+function isValidUrl(string) {
+  try {
+    new URL(string);
+    return true;
+  } catch (_) {
+    return false;  
+  }
+}
+</script>
+</body>
+  </html>
