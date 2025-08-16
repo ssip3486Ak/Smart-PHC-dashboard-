@@ -171,7 +171,7 @@ th { background: #0077b6; color: white; }
 
 <section id="stock" class="active">
   <div class="card">
-    <h3>📂 Upload Excel or PDF</h3>
+    <h3>📂 Upload Medicine Stock File</h3>
     <input type="file" id="excelFile" accept=".xlsx,.xls" class="btn" />
     <input type="file" id="pdfFile" accept="application/pdf" class="btn" />
     <div style="margin-top:10px;">
@@ -288,7 +288,7 @@ function renderStockReportTable(){ const tb=stockReportTable.querySelector("tbod
 function exportStockReport(){ XLSX.writeFile(XLSX.utils.book_append_sheet(XLSX.utils.book_new(),XLSX.utils.json_to_sheet(medicineData),"StockReport"),"stock_in_hand.xlsx"); }
 
 let qrScanner=null;
-function startQRScanner(){ if(!qrScanner) qrScanner=new Html5Qrcode("qr-reader"); document.getElementById("qr-reader").style.display=""; startScanBtn.style.display="none"; stopScanBtn.style.display=""; qrResult.textContent=""; qrScanner.start({facingMode:"environment"},{fps:10,qrbox:250},msg=>{ qrResult.textContent=msg; stopQRScanner(); }).catch(err=>{ qrResult.textContent="Camera error: "+err; stopQRScanner(); }); }
+function startQRScanner(){ if(!qrScanner) qrScanner=new Html5Qrcode("qr-reader"); document.getElementById("qr-reader").style.display=""; startScanBtn.style.display="none"; stopScanBtn.style.display=""; qrResult.textContent=""; qrScanner.start({facingMode:"environment"},{fps:10,qrbox:250},msg=>{ handleQRResult(msg); }).catch(err=>{ qrResult.textContent="Camera error: "+err; stopQRScanner(); }); }
 function stopQRScanner(){ startScanBtn.style.display=""; stopScanBtn.style.display="none"; document.getElementById("qr-reader").style.display="none"; if(qrScanner){qrScanner.stop().then(()=>qrScanner.clear()).catch(()=>{});} }
 window.startQRScanner=startQRScanner; window.stopQRScanner=stopQRScanner;
 
@@ -389,6 +389,29 @@ function applyDeduction(medicineName, quantity) {
   renderTable();
   alert(`Deducted ${quantity} units from ${medicineName}.`);
 }
+
+// QR Code result handler with confirmation to open
+function handleQRResult(msg) {
+  qrResult.textContent = `QR Code Content: ${msg}`;
+  stopQRScanner();
+  if (isValidUrl(msg)) {
+    if (confirm(`The QR code contains a URL:\n${msg}\n\nDo you want to open it in a new tab?`)) {
+      window.open(msg, '_blank');
+    }
+  } else {
+    alert('Scanned QR code content is not a valid URL.');
+  }
+}
+
+function isValidUrl(string) {
+  try {
+    new URL(string);
+    return true;
+  } catch (_) {
+    return false;  
+  }
+}
 </script>
 </body>
-</html>
+                                                                     </html>
+  
