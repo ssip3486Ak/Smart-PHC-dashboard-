@@ -353,13 +353,15 @@ function loadDataFromCloud(){
   });
 }
 
-// Tab switching logic with fixed tab functionality
+// Tab switching logic with fixes
 document.querySelectorAll(".tab-btn").forEach(b => {
   b.onclick = () => {
     document.querySelectorAll(".tab-btn").forEach(x => x.classList.remove("active"));
     b.classList.add("active");
     document.querySelectorAll("section").forEach(s => s.classList.remove("active"));
-    document.getElementById(b.dataset.tab).classList.add("active");
+
+    const activeSection = document.getElementById(b.dataset.tab);
+    activeSection.classList.add("active");
 
     if (b.dataset.tab === "expiry") {
       renderNearExpiry();
@@ -368,16 +370,117 @@ document.querySelectorAll(".tab-btn").forEach(b => {
       renderStockReportTable();
     }
     if (b.dataset.tab === "stock") {
-      // Refresh virtual scroll rendering when stock tab is active
       renderVirtualTable();
+    }
+    if (b.dataset.tab === "scanner") {
+      // Reset/clear QR scan results when entering scanner tab
+      qrResultPara.textContent = "";
+      qrReaderDiv.style.display = "none";
+      startScanBtn.style.display = "inline-block";
+      stopScanBtn.style.display = "none";
     }
   }
 });
 
+// QR Scanner variables and functions
+let qrScanner = null;
+const qrReaderDiv = document.getElementById('qr-reader');
+const qrResultPara = document.getElementById('qrResult');
+const startScanBtn = document.getElementById('startScanBtn');
+const stopScanBtn = document.getElementById('stopScanBtn');
 
-// The rest of your existing code for imports, deductions, QR scanning, exports, etc.
+function startQRScanner() {
+  if (!qrScanner) {
+    qrScanner = new Html5Qrcode("qr-reader");
+  }
+  qrReaderDiv.style.display = "block";
+  startScanBtn.style.display = "none";
+  stopScanBtn.style.display = "inline-block";
+  qrResultPara.textContent = "";
+  qrScanner.start(
+    { facingMode: "environment" },
+    { fps: 10, qrbox: 250 },
+    (decodedText) => {
+      handleQRResult(decodedText);
+      stopQRScanner();
+    },
+    (error) => {
+      // Error optionally handled here
+    }
+  ).catch(err => {
+    qrResultPara.textContent = "Camera error: " + err;
+    stopQRScanner();
+  });
+}
 
-// Excel and PDF import handlers
+function stopQRScanner() {
+  if (qrScanner) {
+    qrScanner.stop().then(() => {
+      qrScanner.clear();
+      qrScanner = null;
+    }).catch(() => {
+      // ignore errors here
+    });
+  }
+  qrReaderDiv.style.display = "none";
+  startScanBtn.style.display = "inline-block";
+  stopScanBtn.style.display = "none";
+}
+
+// Handle QR result - show confirm dialog to open URL if valid link
+function handleQRResult(msg) {
+  qrResultPara.textContent = `QR Code Content: ${msg}`;
+  if (isValidUrl(msg)) {
+    if (confirm(`The QR code contains a URL:\n${msg}\n\nDo you want to open it in a new tab?`)) {
+      window.open(msg, '_blank');
+    }
+  } else {
+    alert('Scanned QR code content is not a valid URL.');
+  }
+}
+
+function isValidUrl(string) {
+  try {
+    new URL(string);
+    return true;
+  } catch (_) {
+    return false;  
+  }
+}
+
+// Near expiry rendering
+function renderNearExpiry() {
+  const tb = document.querySelector("#nearExpiryTable tbody");
+  const alertBox = document.getElementById('expiryAlerts');
+  tb.innerHTML = "";
+  alertBox.innerHTML = "";
+  const threshold = +document.getElementById('expiryDaysNear').value;
+  const today = new Date();
+
+  let list = medicineDataFull.map(m => {
+    const e = getLastDateOfExpiryMonth(toMMYYYY(m['Expiry Date']));
+    const daysLeft = e ? Math.ceil((e - today) / (1000*60*60*24)) : null;
+    return {...m, daysLeft};
+  }).filter(m => m.daysLeft !== null && m.daysLeft <= threshold)
+    .sort((a,b) => a.daysLeft - b.daysLeft);
+
+  if (!list.length) alertBox.innerHTML = "<div>No medicines nearing expiry.</div>";
+  list.forEach(r => {
+    tb.innerHTML += `<tr>
+      <td>${r["Medicine Name"]}</td>
+      <td>${r.Rack || ""}</td>
+      <td>${r.Quantity}</td>
+      <td>${toMMYYYY(r["Expiry Date"])}</td>
+      <td>${getExpiryLabel(r.daysLeft)}</td>
+    </tr>`;
+    alertBox.innerHTML += `<div class="alert">${r["Medicine Name"]} - Expires ${toMMYYYY(r["Expiry Date"])}</div>`;
+  });
+}
+
+// Attach event to expiryDaysNear selector
+document.getElementById('expiryDaysNear').addEventListener('change', renderNearExpiry);
+
+// Excel and PDF upload handlers unchanged
 excelFile.onchange=()=>{ const f=excelFile.files[0]; if(!f)return; const r=new FileReader(); r.onload=e=>{ const wb=XLSX.read(new Uint8Array(e.target.result),{type:'array'}); let d=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]); d=d.map(m=>({...m,"Expiry Date":toMMYYYY(m["Expiry Date"])})); mergeStock(d); }; r.readAsArrayBuffer(f); };
 pdfFile.onchange=()=>{ const f=pdfFile.files[0]; if(!f)return; const r=new FileReader(); r.onload=async function(){ const pdf=await pdfjsLib.getDocument({data:new Uint8Array(this.result)}).promise; let text=''; for(let p=1;p<=pdf.numPages;p++){const pg=await pdf.getPage(p); const tc=await pg.getTextContent(); text+=tc.items.map(i=>i.str).join(' ')+'\n';} let arr=[]; for(let line of text.split('\n')){let m=line.match(/([\w\s]+)\s+(\S+)\s+(\d+)/); if(m)arr.push({"Medicine Name":m[1].trim(),"Expiry Date":toMMYYYY(m[2]),"Quantity":+m[3],"Rack":""});} mergeStock(arr); }; r.readAsArrayBuffer(f); };
 function mergeStock(newData){
@@ -393,8 +496,7 @@ function mergeStock(newData){
   applyFilters();
 }
 
-// Deduction and confirmation modal code and QR scanning code remain unchanged here for brevity.
-// You can add them below as per your existing implementation.
+// Deduction button and confirmation modal logic remains unchanged, add as per your previous code.
 
 </script>
 </body>
