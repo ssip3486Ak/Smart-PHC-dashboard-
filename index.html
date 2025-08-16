@@ -271,21 +271,13 @@ onAuthStateChanged(auth,(user)=>{ if(user){ loginSection.style.display="none"; d
 
 const unique=a=>[...new Set(a.map(v=>(v||"").trim()).filter(Boolean))];
 function saveDataToCloud(){ set(ref(db,"medicineStock"), medicineDataFull); }
-function loadDataFromCloud(){ get(child(ref(db),"medicineStock")).then(snap=>{
-  medicineDataFull = snap.val()||[];
-  applyFilters();
-}); }
+
+const container = document.getElementById('virtualScrollContainer');
+const tbody = document.getElementById('medicineTableBody');
 
 function toMMYYYY(s){ if(!s)return""; let p=new Date(s); if(!isNaN(p))return ("0"+(p.getMonth()+1)).slice(-2)+"/"+p.getFullYear(); return s; }
 function getLastDateOfExpiryMonth(m){ if(!m)return null; let[mm,yy]=m.split("/"); return new Date(parseInt(yy),parseInt(mm),0); }
 function getExpiryLabel(d){ if(d<0)return"Expired"; if(d===0)return"Expiring Today"; if(d<=30)return d+" days left"; if(d<=60)return Math.round(d/7)+" weeks"; if(d<=365)return"About "+Math.floor(d/30)+" months"; return"More than a year"; }
-
-// Virtual Scrolling Settings
-const ROW_HEIGHT = 40; // px height per row
-const BUFFER_ROWS = 5;
-
-const container = document.getElementById('virtualScrollContainer');
-const tbody = document.getElementById('medicineTableBody');
 
 function createRow(medicine) {
   const tr = document.createElement('tr');
@@ -298,6 +290,10 @@ function createRow(medicine) {
   `;
   return tr;
 }
+
+// Virtual Scrolling Settings
+const ROW_HEIGHT = 40; // px height per row
+const BUFFER_ROWS = 5;
 
 function renderVirtualTable() {
   const totalRows = medicineDataFiltered.length;
@@ -344,28 +340,46 @@ function applyFilters() {
   renderVirtualTable();
 }
 
-// Update filters on input/select change
 searchBox.addEventListener('input', applyFilters);
 rackFilter.addEventListener('change', applyFilters);
 
-// Replace existing renderTable functionality with filtering and virtual rendering
-function renderTable() { applyFilters(); }
-
-// Override loadDataFromCloud to set full data then filter and render
-loadDataFromCloud = function (){
+function loadDataFromCloud(){
   get(child(ref(db), "medicineStock")).then(snap => {
     medicineDataFull = snap.val() || [];
     applyFilters();
-    // Update rackFilter based on current data
+    // Update rackFilter options
     const racks = unique(medicineDataFull.map(m => m.Rack));
     rackFilter.innerHTML = "<option value=''>All Racks</option>" + racks.map(r => `<option>${r}</option>`).join('');
   });
-};
+}
 
-// Other existing functions related to Excel and PDF imports remain unchanged
+// Tab switching logic with fixed tab functionality
+document.querySelectorAll(".tab-btn").forEach(b => {
+  b.onclick = () => {
+    document.querySelectorAll(".tab-btn").forEach(x => x.classList.remove("active"));
+    b.classList.add("active");
+    document.querySelectorAll("section").forEach(s => s.classList.remove("active"));
+    document.getElementById(b.dataset.tab).classList.add("active");
+
+    if (b.dataset.tab === "expiry") {
+      renderNearExpiry();
+    }
+    if (b.dataset.tab === "reports") {
+      renderStockReportTable();
+    }
+    if (b.dataset.tab === "stock") {
+      // Refresh virtual scroll rendering when stock tab is active
+      renderVirtualTable();
+    }
+  }
+});
+
+
+// The rest of your existing code for imports, deductions, QR scanning, exports, etc.
+
+// Excel and PDF import handlers
 excelFile.onchange=()=>{ const f=excelFile.files[0]; if(!f)return; const r=new FileReader(); r.onload=e=>{ const wb=XLSX.read(new Uint8Array(e.target.result),{type:'array'}); let d=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]); d=d.map(m=>({...m,"Expiry Date":toMMYYYY(m["Expiry Date"])})); mergeStock(d); }; r.readAsArrayBuffer(f); };
 pdfFile.onchange=()=>{ const f=pdfFile.files[0]; if(!f)return; const r=new FileReader(); r.onload=async function(){ const pdf=await pdfjsLib.getDocument({data:new Uint8Array(this.result)}).promise; let text=''; for(let p=1;p<=pdf.numPages;p++){const pg=await pdf.getPage(p); const tc=await pg.getTextContent(); text+=tc.items.map(i=>i.str).join(' ')+'\n';} let arr=[]; for(let line of text.split('\n')){let m=line.match(/([\w\s]+)\s+(\S+)\s+(\d+)/); if(m)arr.push({"Medicine Name":m[1].trim(),"Expiry Date":toMMYYYY(m[2]),"Quantity":+m[3],"Rack":""});} mergeStock(arr); }; r.readAsArrayBuffer(f); };
-
 function mergeStock(newData){
   newData.forEach(n=>{
     let existing = medicineDataFull.find(o => o["Medicine Name"].toLowerCase() === n["Medicine Name"].toLowerCase() && o["Expiry Date"] === n["Expiry Date"]);
@@ -379,7 +393,8 @@ function mergeStock(newData){
   applyFilters();
 }
 
-// Rest of your existing code including deduction, QR scanning, etc. remains unchanged and works as before
+// Deduction and confirmation modal code and QR scanning code remain unchanged here for brevity.
+// You can add them below as per your existing implementation.
 
 </script>
 </body>
