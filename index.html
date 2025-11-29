@@ -12,7 +12,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js"></script>
 
-<!-- Tesseract.js for OCR (added) -->
+<!-- Tesseract.js for OCR -->
 <script src="https://unpkg.com/tesseract.js@v4.1.1/dist/tesseract.min.js"></script>
 
 <style>
@@ -219,6 +219,7 @@ th { background: #0077b6; color: white; }
     <button onclick="exportExcel()" class="btn">Export Stock Excel</button>
     <button onclick="exportPDF()" class="btn">Export Stock PDF</button>
     <button onclick="exportStockReport()" class="btn">Export Stock Report Excel</button>
+    <button id="resetDataBtn" class="btn" style="background: #e74c3c;">Reset All Data</button>
   </div>
   <div class="card table-container"><table id="stockReportTable"><thead><tr><th>Medicine</th><th>Rack</th><th>Qty</th><th>Expiry</th></tr></thead><tbody></tbody></table></div>
 </section>
@@ -280,7 +281,9 @@ function renderNearExpiry(){ const tb=nearExpiryTable.querySelector("tbody"), al
 expiryDaysNear.onchange=renderNearExpiry; rackFilter.onchange=renderTable; searchBox.oninput=renderTable;
 
 excelFile.onchange=()=>{ const f=excelFile.files[0]; if(!f)return; const r=new FileReader(); r.onload=e=>{ const wb=XLSX.read(new Uint8Array(e.target.result),{type:'array'}); let d=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]); d=d.map(m=>({...m,"Expiry Date":toMMYYYY(m["Expiry Date"])})); mergeStock(d); }; r.readAsArrayBuffer(f); };
-pdfFile.onchange=()=>{ const f=pdfFile.files[0]; if(!f)return; const r=new FileReader(); r.onload=async function(){ const pdf=await pdfjsLib.getDocument({data:new Uint8Array(this.result)}).promise; let text=''; for(let p=1;p<=pdf.numPages;p++){const pg=await pdf.getPage(p); const tc=await pg.getTextContent(); text+=tc.items.map(i=>i.str).join(' ')+'\n';} let arr=[]; for(let line of text.split('\n')){let m=line.match(/([\w\s]+)\s+(\S+)\s+(\d+)/); if(m)arr.push({"Medicine Name":m[1].trim(),"Expiry Date":toMMYYYY(m[2]),"Quantity":+m[3],"Rack":""});} mergeStock(arr); }; r.readAsArrayBuffer(f); };
+pdfFile.onchange=()=>{ const f=pdfFile.files[0]; if(!f)return; const r=new FileReader(); r.onload=async function(){ const pdf=await pdfjsLib.getDocument({data:new Uint8Array(this.result)}).promise; let text=''; for(let p=1;p<=pdf.numPages;p++){const pg=await pdf.getPage(p); const tc=await pg.getTextContent(); text+=tc.items.map(i=>i.str).join(' ')+'
+';} let arr=[]; for(let line of text.split('
+')){let m=line.match(/([ws]+)s+(S+)s+(d+)/); if(m)arr.push({"Medicine Name":m[1].trim(),"Expiry Date":toMMYYYY(m[2]),"Quantity":+m[3],"Rack":""});} mergeStock(arr); }; r.readAsArrayBuffer(f); };
 function mergeStock(newData){ newData.forEach(n=>{ let ex=medicineData.find(o=>o["Medicine Name"].toLowerCase()===n["Medicine Name"].toLowerCase()&&o["Expiry Date"]===n["Expiry Date"]); ex?ex.Quantity+=n.Quantity:medicineData.push(n); }); saveDataToCloud(); renderTable(); }
 
 function exportExcel(){ XLSX.writeFile(XLSX.utils.book_append_sheet(XLSX.utils.book_new(),XLSX.utils.json_to_sheet(medicineData),"Stock"),"medicine_stock.xlsx"); }
@@ -301,19 +304,19 @@ document.querySelectorAll(".tab-btn").forEach(b=>b.onclick=()=>{ document.queryS
 
 // ----------------- Helper functions -----------------
 function normalizeText(s){
-  return (s||"").replace(/\s+/g,' ').trim();
+  return (s||"").replace(/s+/g,' ').trim();
 }
-function parseIntSafe(v){ const n=parseInt((v||"").replace(/[^\d-]/g,''),10); return isNaN(n)?null:n; }
+function parseIntSafe(v){ const n=parseInt((v||"").replace(/[^d-]/g,''),10); return isNaN(n)?null:n; }
 
 // Try to find date in many formats and return MM/YYYY like earlier
 function parseDateFromString(str){
   if(!str) return null;
-  str = str.replace(/[\u2018\u2019\u201C\u201D]/g,'"');
+  str = str.replace(/[‘’“”]/g,'"');
   // common patterns: dd/mm/yyyy, dd-mm-yyyy, mm/yyyy, mm-yyyy, yyyy-mm-dd
   const datePatterns = [
-    /(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})/,   // dd/mm/yyyy or d-m-yy
-    /(\d{1,2})[\/\-](\d{4})/,                   // mm/yyyy
-    /(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/     // yyyy-mm-dd
+    /(d{1,2})[/-](d{1,2})[/-](d{2,4})/,   // dd/mm/yyyy or d-m-yy
+    /(d{1,2})[/-](d{4})/,                   // mm/yyyy
+    /(d{4})[/-](d{1,2})[/-](d{1,2})/     // yyyy-mm-dd
   ];
   for(const p of datePatterns){
     const m = str.match(p);
@@ -329,7 +332,7 @@ function parseDateFromString(str){
   }
   // fallback: look for month names
   const months = {jan:1,feb:2,mar:3,apr:4,may:5,jun:6,jul:7,aug:8,sep:9,oct:10,nov:11,dec:12};
-  const m = str.toLowerCase().match(/(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s*(\d{4})?/);
+  const m = str.toLowerCase().match(/(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*.?s*(d{4})?/);
   if(m){
     const mm = months[m[1].slice(0,3)];
     const yy = m[2] ? +m[2] : (new Date()).getFullYear();
@@ -378,13 +381,13 @@ function getBestMedicineMatch(name){
 // Robust quantity extractor: looks for standalone numbers or patterns like x12, qty:12, 12nos etc.
 function extractQuantityFromText(s){
   if(!s) return null;
-  const patterns = [/qty[:\s]*?(\d{1,5})/i, /quantity[:\s]*?(\d{1,5})/i, /(?:\b|x)(\d{1,5})\s*(?:nos|tabs|tablets|amp|ampoules)?\b/i, /(\d{1,5})\s*(?:nos|tabs|tablets|amp|ampoules)\b/i];
+  const patterns = [/qty[:s]*?(d{1,5})/i, /quantity[:s]*?(d{1,5})/i, /(?:\b|x)(d{1,5})s*(?:nos|tabs|tablets|amp|ampoules)?\b/i, /(d{1,5})s*(?:nos|tabs|tablets|amp|ampoules)\b/i];
   for(const p of patterns){
     const m = s.match(p);
     if(m) return parseIntSafe(m[1]);
   }
   // fallback: last number in the line
-  const lastNum = s.match(/(\d{1,5})(?!.*\d)/);
+  const lastNum = s.match(/(d{1,5})(?!.*d)/);
   if(lastNum) return parseIntSafe(lastNum[1]);
   return null;
 }
@@ -397,24 +400,27 @@ async function extractDataFromPDF(file) {
   for (let p = 1; p <= pdf.numPages; p++) {
     const page = await pdf.getPage(p);
     const content = await page.getTextContent();
-    text += content.items.map(i => i.str).join(' ') + '\n';
+    text += content.items.map(i => i.str).join(' ') + '
+';
   }
-  const lines = text.split(/\r?\n/).map(l=>l.trim()).filter(Boolean);
+  const lines = text.split(/
+?
+/).map(l=>l.trim()).filter(Boolean);
   let candidates = [];
   for (let line of lines) {
-    const l = line.replace(/\s{2,}/g, ' ');
+    const l = line.replace(/s{2,}/g, ' ');
     const qty = extractQuantityFromText(l);
     const date = parseDateFromString(l);
     if(qty !== null || date !== null){
       candidates.push({line:l,qty,date});
     } else {
-      if(/\d{1,5}/.test(l)){
+      if(/d{1,5}/.test(l)){
         candidates.push({line:l,qty:extractQuantityFromText(l),date:parseDateFromString(l)});
       }
     }
   }
   for(const c of candidates){
-    let name = c.line.replace(/(qty[:\s]*\d{1,5})/i,'').replace(/(\d{1,5}\s*(nos|tabs|tablets|amp|ampoules)?)/i,'').replace(/(exp|expiry|exp\.)[:\s]*\S*/ig,'').trim();
+    let name = c.line.replace(/(qty[:s]*d{1,5})/i,'').replace(/(d{1,5}s*(nos|tabs|tablets|amp|ampoules)?)/i,'').replace(/(exp|expiry|exp.)[:s]*S*/ig,'').trim();
     name = name.replace(/\b(MRP|RS|BATCH|BATCHNO|BATCH#)\b/ig,'').trim();
     if(!name) continue;
     const matched = getBestMedicineMatch(name) || null;
@@ -443,22 +449,24 @@ async function extractDataFromImage(file) {
   const { data: { text } } = await Tesseract.recognize(dataUrl, 'eng', { logger: m => {
     // optional progress logger
   }});
-  const lines = text.split(/\r?\n/).map(l=>l.trim()).filter(Boolean);
+  const lines = text.split(/
+?
+/).map(l=>l.trim()).filter(Boolean);
   let candidates = [];
   for (let line of lines) {
-    const l = line.replace(/\s{2,}/g, ' ');
+    const l = line.replace(/s{2,}/g, ' ');
     const qty = extractQuantityFromText(l);
     const date = parseDateFromString(l);
     if(qty !== null || date !== null){
       candidates.push({line:l,qty,date});
     } else {
-      if(/\d{1,5}/.test(l)){
+      if(/d{1,5}/.test(l)){
         candidates.push({line:l,qty:extractQuantityFromText(l),date:parseDateFromString(l)});
       }
     }
   }
   for(const c of candidates){
-    let name = c.line.replace(/(qty[:\s]*\d{1,5})/i,'').replace(/(\d{1,5}\s*(nos|tabs|tablets|amp|ampoules)?)/i,'').replace(/(exp|expiry|exp\.)[:\s]*\S*/ig,'').trim();
+    let name = c.line.replace(/(qty[:s]*d{1,5})/i,'').replace(/(d{1,5}s*(nos|tabs|tablets|amp|ampoules)?)/i,'').replace(/(exp|expiry|exp.)[:s]*S*/ig,'').trim();
     name = name.replace(/\b(MRP|RS|BATCH|BATCHNO|BATCH#)\b/ig,'').trim();
     if(!name) continue;
     const matched = getBestMedicineMatch(name) || null;
@@ -491,7 +499,10 @@ function applyDeduction(medicineName, quantity) {
     if(matched) item = matched;
   }
   if(!item){
-    alert(`Medicine '${medicineName}' not found in stock. Closest matches:\n\n` + medicineData.slice(0,5).map(m=>m["Medicine Name"]).join('\n'));
+    alert(`Medicine '${medicineName}' not found in stock. Closest matches:
+
+` + medicineData.slice(0,5).map(m=>m["Medicine Name"]).join('
+'));
     return;
   }
   if(item.Quantity === undefined || item.Quantity === null) item.Quantity = 0;
@@ -505,7 +516,7 @@ function applyDeduction(medicineName, quantity) {
   alert(`Deducted ${quantity} units from ${item["Medicine Name"]}.`);
 }
 
-// ----------------- Deduction UI wiring (keeps previous behavior) -----------------
+// ----------------- Deduction UI wiring -----------------
 const deductionBtn = document.getElementById('deductionBtn');
 const deductionFile = document.getElementById('deductionFile');
 const deductionModal = document.getElementById('deductionConfirmationModal');
@@ -529,7 +540,9 @@ deductionFile.addEventListener('change', async () => {
     }
     if (extractedData && extractedData.medicine && typeof extractedData.quantity === 'number') {
       currentDeduction = extractedData;
-      deductionSummaryEl.textContent = `Medicine: ${extractedData.medicine}\nQuantity to Deduct: ${extractedData.quantity}\nDate: ${extractedData.date || new Date().toLocaleDateString()}`;
+      deductionSummaryEl.textContent = `Medicine: ${extractedData.medicine}
+Quantity to Deduct: ${extractedData.quantity}
+Date: ${extractedData.date || new Date().toLocaleDateString()}`;
       deductionModal.style.display = 'flex';
     } else {
       alert('Could not extract valid deduction data from the uploaded file.');
@@ -557,7 +570,10 @@ function handleQRResult(msg) {
   qrResult.textContent = `QR Code Content: ${msg}`;
   stopQRScanner();
   if (isValidUrl(msg)) {
-    if (confirm(`The QR code contains a URL:\n${msg}\n\nDo you want to open it in a new tab?`)) {
+    if (confirm(`The QR code contains a URL:
+${msg}
+
+Do you want to open it in a new tab?`)) {
       window.open(msg, '_blank');
     }
   } else {
@@ -573,6 +589,20 @@ function isValidUrl(string) {
     return false;  
   }
 }
+
+// ----------------- Reset All Data button functionality -----------------
+const resetDataBtn = document.getElementById('resetDataBtn');
+
+resetDataBtn.addEventListener('click', () => {
+  if (confirm('Are you sure you want to erase ALL medicine data? This action cannot be undone.')) {
+    medicineData = [];
+    saveDataToCloud();  // Save empty array to Firebase
+    renderTable();
+    renderNearExpiry();
+    renderStockReportTable();
+    alert('All medicine data has been reset.');
+  }
+});
 </script>
 </body>
 </html>
