@@ -12,6 +12,9 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js"></script>
 
+<!-- Tesseract.js for OCR (added) -->
+<script src="https://unpkg.com/tesseract.js@v4.1.1/dist/tesseract.min.js"></script>
+
 <style>
 body {
   font-family: Arial, sans-serif;
@@ -224,7 +227,7 @@ th { background: #0077b6; color: white; }
 <div id="deductionConfirmationModal">
   <div class="modal-content">
     <h3>Confirm Deduction</h3>
-    <p id="deductionSummary"></p>
+    <pre id="deductionSummary" style="white-space:pre-wrap;"></pre>
     <button id="confirmDeductionBtn" class="btn">Confirm</button>
     <button id="cancelDeductionBtn" class="btn" style="background:#d9534f;">Cancel</button>
   </div>
@@ -294,11 +297,219 @@ window.startQRScanner=startQRScanner; window.stopQRScanner=stopQRScanner;
 
 document.querySelectorAll(".tab-btn").forEach(b=>b.onclick=()=>{ document.querySelectorAll(".tab-btn").forEach(x=>x.classList.remove("active")); b.classList.add("active"); document.querySelectorAll("section").forEach(s=>s.classList.remove("active")); document.getElementById(b.dataset.tab).classList.add("active"); if(b.dataset.tab==="expiry")renderNearExpiry(); if(b.dataset.tab==="reports")renderStockReportTable(); });
 
-// Deduction related logic
+// ----------------- New / replaced functions (OCR, PDF parsing, fuzzy match) -----------------
+
+// ----------------- Helper functions -----------------
+function normalizeText(s){
+  return (s||"").replace(/\s+/g,' ').trim();
+}
+function parseIntSafe(v){ const n=parseInt((v||"").replace(/[^\d-]/g,''),10); return isNaN(n)?null:n; }
+
+// Try to find date in many formats and return MM/YYYY like earlier
+function parseDateFromString(str){
+  if(!str) return null;
+  str = str.replace(/[\u2018\u2019\u201C\u201D]/g,'"');
+  // common patterns: dd/mm/yyyy, dd-mm-yyyy, mm/yyyy, mm-yyyy, yyyy-mm-dd
+  const datePatterns = [
+    /(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})/,   // dd/mm/yyyy or d-m-yy
+    /(\d{1,2})[\/\-](\d{4})/,                   // mm/yyyy
+    /(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/     // yyyy-mm-dd
+  ];
+  for(const p of datePatterns){
+    const m = str.match(p);
+    if(m){
+      if(m.length===4){ // dd/mm/yyyy
+        let dd=+m[1], mm=+m[2], yy=+m[3]; if(yy<100) yy += (yy>50?1900:2000);
+        return `${("0"+mm).slice(-2)}/${yy}`; // MM/YYYY
+      } else if(m.length===3){ // mm/yyyy
+        let mm=+m[1], yy=+m[2]; if(yy<100) yy += (yy>50?1900:2000);
+        return `${("0"+mm).slice(-2)}/${yy}`;
+      }
+    }
+  }
+  // fallback: look for month names
+  const months = {jan:1,feb:2,mar:3,apr:4,may:5,jun:6,jul:7,aug:8,sep:9,oct:10,nov:11,dec:12};
+  const m = str.toLowerCase().match(/(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s*(\d{4})?/);
+  if(m){
+    const mm = months[m[1].slice(0,3)];
+    const yy = m[2] ? +m[2] : (new Date()).getFullYear();
+    return `${("0"+mm).slice(-2)}/${yy}`;
+  }
+  return null;
+}
+
+// Simple Levenshtein distance for fuzzy matching
+function levenshtein(a,b){
+  a = (a||"").toLowerCase(); b = (b||"").toLowerCase();
+  if(!a) return b.length;
+  if(!b) return a.length;
+  const m = a.length, n = b.length;
+  const dp = Array.from({length:m+1},()=>Array(n+1).fill(0));
+  for(let i=0;i<=m;i++) dp[i][0]=i;
+  for(let j=0;j<=n;j++) dp[0][j]=j;
+  for(let i=1;i<=m;i++){
+    for(let j=1;j<=n;j++){
+      const cost = a[i-1]==b[j-1]?0:1;
+      dp[i][j] = Math.min(dp[i-1][j]+1, dp[i][j-1]+1, dp[i-1][j-1]+cost);
+    }
+  }
+  return dp[m][n];
+}
+
+function getBestMedicineMatch(name){
+  if(!name) return null;
+  name = normalizeText(name);
+  const candidates = medicineData.map(m => m["Medicine Name"]||"");
+  if(!candidates.length) return null;
+  let best = {idx:-1,dist:Infinity};
+  for(let i=0;i<candidates.length;i++){
+    const cand = normalizeText(candidates[i]);
+    const d = levenshtein(name,cand);
+    if(d < best.dist){ best = {idx:i,dist:d}; }
+  }
+  // threshold: allow if distance less than 40% of candidate length
+  const candLen = (candidates[best.idx]||"").length;
+  if(best.idx>=0 && best.dist <= Math.max(1, Math.floor(candLen*0.4))){
+    return medicineData[best.idx];
+  }
+  return null;
+}
+
+// Robust quantity extractor: looks for standalone numbers or patterns like x12, qty:12, 12nos etc.
+function extractQuantityFromText(s){
+  if(!s) return null;
+  const patterns = [/qty[:\s]*?(\d{1,5})/i, /quantity[:\s]*?(\d{1,5})/i, /(?:\b|x)(\d{1,5})\s*(?:nos|tabs|tablets|amp|ampoules)?\b/i, /(\d{1,5})\s*(?:nos|tabs|tablets|amp|ampoules)\b/i];
+  for(const p of patterns){
+    const m = s.match(p);
+    if(m) return parseIntSafe(m[1]);
+  }
+  // fallback: last number in the line
+  const lastNum = s.match(/(\d{1,5})(?!.*\d)/);
+  if(lastNum) return parseIntSafe(lastNum[1]);
+  return null;
+}
+
+// ----------------- Improved PDF extraction -----------------
+async function extractDataFromPDF(file) {
+  const arrayBuffer = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+  let text = '';
+  for (let p = 1; p <= pdf.numPages; p++) {
+    const page = await pdf.getPage(p);
+    const content = await page.getTextContent();
+    text += content.items.map(i => i.str).join(' ') + '\n';
+  }
+  const lines = text.split(/\r?\n/).map(l=>l.trim()).filter(Boolean);
+  let candidates = [];
+  for (let line of lines) {
+    const l = line.replace(/\s{2,}/g, ' ');
+    const qty = extractQuantityFromText(l);
+    const date = parseDateFromString(l);
+    if(qty !== null || date !== null){
+      candidates.push({line:l,qty,date});
+    } else {
+      if(/\d{1,5}/.test(l)){
+        candidates.push({line:l,qty:extractQuantityFromText(l),date:parseDateFromString(l)});
+      }
+    }
+  }
+  for(const c of candidates){
+    let name = c.line.replace(/(qty[:\s]*\d{1,5})/i,'').replace(/(\d{1,5}\s*(nos|tabs|tablets|amp|ampoules)?)/i,'').replace(/(exp|expiry|exp\.)[:\s]*\S*/ig,'').trim();
+    name = name.replace(/\b(MRP|RS|BATCH|BATCHNO|BATCH#)\b/ig,'').trim();
+    if(!name) continue;
+    const matched = getBestMedicineMatch(name) || null;
+    if(c.qty !== null){
+      return { medicine: matched ? (matched["Medicine Name"]||name) : name, quantity: c.qty, date: c.date || null };
+    } else if(matched){
+      return { medicine: matched["Medicine Name"], quantity: 1, date: c.date || null };
+    }
+  }
+  throw new Error('No valid deduction data found in PDF.');
+}
+
+// ----------------- Image OCR using Tesseract -----------------
+async function extractDataFromImage(file) {
+  if(typeof Tesseract === 'undefined' && !window.Tesseract){
+    alert('Tesseract not loaded. Make sure you added the Tesseract script tag in <head>.');
+    return null;
+  }
+  deductionSummary.textContent = 'Processing image... OCR in progress (may take few seconds)...';
+  const dataUrl = await new Promise((res, rej) => {
+    const fr = new FileReader();
+    fr.onload = e => res(e.target.result);
+    fr.onerror = rej;
+    fr.readAsDataURL(file);
+  });
+  const { data: { text } } = await Tesseract.recognize(dataUrl, 'eng', { logger: m => {
+    // optional progress logger
+  }});
+  const lines = text.split(/\r?\n/).map(l=>l.trim()).filter(Boolean);
+  let candidates = [];
+  for (let line of lines) {
+    const l = line.replace(/\s{2,}/g, ' ');
+    const qty = extractQuantityFromText(l);
+    const date = parseDateFromString(l);
+    if(qty !== null || date !== null){
+      candidates.push({line:l,qty,date});
+    } else {
+      if(/\d{1,5}/.test(l)){
+        candidates.push({line:l,qty:extractQuantityFromText(l),date:parseDateFromString(l)});
+      }
+    }
+  }
+  for(const c of candidates){
+    let name = c.line.replace(/(qty[:\s]*\d{1,5})/i,'').replace(/(\d{1,5}\s*(nos|tabs|tablets|amp|ampoules)?)/i,'').replace(/(exp|expiry|exp\.)[:\s]*\S*/ig,'').trim();
+    name = name.replace(/\b(MRP|RS|BATCH|BATCHNO|BATCH#)\b/ig,'').trim();
+    if(!name) continue;
+    const matched = getBestMedicineMatch(name) || null;
+    if(c.qty !== null){
+      return { medicine: matched ? (matched["Medicine Name"]||name) : name, quantity: c.qty, date: c.date || null };
+    } else if(matched){
+      return { medicine: matched["Medicine Name"], quantity: 1, date: c.date || null };
+    }
+  }
+  alert('OCR completed but no clear deduction line found. Please check voucher image quality or upload PDF.');
+  return null;
+}
+
+// ----------------- Improved applyDeduction with fuzzy matching -----------------
+function applyDeduction(medicineName, quantity) {
+  if(!medicineName){
+    alert('No medicine name provided.');
+    return;
+  }
+  quantity = Number(quantity);
+  if(isNaN(quantity) || quantity<=0){
+    alert('Invalid deduction quantity.');
+    return;
+  }
+  // Try exact match first
+  let item = medicineData.find(m => (m["Medicine Name"]||"").toLowerCase() === medicineName.toLowerCase());
+  // if not exact, try fuzzy best match
+  if(!item){
+    const matched = getBestMedicineMatch(medicineName);
+    if(matched) item = matched;
+  }
+  if(!item){
+    alert(`Medicine '${medicineName}' not found in stock. Closest matches:\n\n` + medicineData.slice(0,5).map(m=>m["Medicine Name"]).join('\n'));
+    return;
+  }
+  if(item.Quantity === undefined || item.Quantity === null) item.Quantity = 0;
+  if(item.Quantity < quantity){
+    alert(`Deduction quantity (${quantity}) exceeds current stock (${item.Quantity}) for '${item["Medicine Name"]}'.`);
+    return;
+  }
+  item.Quantity -= quantity;
+  saveDataToCloud();
+  renderTable();
+  alert(`Deducted ${quantity} units from ${item["Medicine Name"]}.`);
+}
+
+// ----------------- Deduction UI wiring (keeps previous behavior) -----------------
 const deductionBtn = document.getElementById('deductionBtn');
 const deductionFile = document.getElementById('deductionFile');
 const deductionModal = document.getElementById('deductionConfirmationModal');
-const deductionSummary = document.getElementById('deductionSummary');
+const deductionSummaryEl = document.getElementById('deductionSummary');
 const confirmDeductionBtn = document.getElementById('confirmDeductionBtn');
 const cancelDeductionBtn = document.getElementById('cancelDeductionBtn');
 
@@ -317,9 +528,8 @@ deductionFile.addEventListener('change', async () => {
       extractedData = await extractDataFromImage(file);
     }
     if (extractedData && extractedData.medicine && typeof extractedData.quantity === 'number') {
-      // Show confirmation modal with extracted data summary
       currentDeduction = extractedData;
-      deductionSummary.textContent = `Medicine: ${extractedData.medicine}\nQuantity to Deduct: ${extractedData.quantity}\nDate: ${extractedData.date || new Date().toLocaleDateString()}`;
+      deductionSummaryEl.textContent = `Medicine: ${extractedData.medicine}\nQuantity to Deduct: ${extractedData.quantity}\nDate: ${extractedData.date || new Date().toLocaleDateString()}`;
       deductionModal.style.display = 'flex';
     } else {
       alert('Could not extract valid deduction data from the uploaded file.');
@@ -341,54 +551,6 @@ cancelDeductionBtn.addEventListener('click', () => {
   currentDeduction = null;
   deductionModal.style.display = 'none';
 });
-
-async function extractDataFromPDF(file) {
-  const arrayBuffer = await file.arrayBuffer();
-  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-  let text = '';
-  for (let p = 1; p <= pdf.numPages; p++) {
-    const page = await pdf.getPage(p);
-    const content = await page.getTextContent();
-    text += content.items.map(i => i.str).join(' ') + '\n';
-  }
-  // Basic pattern to extract medicine name, quantity, and optional expiry (Improvement may be needed depending on formats)
-  // Example line pattern: MedicineName ExpiryDate Quantity
-  const lines = text.split('\n');
-  for (let line of lines) {
-    let match = line.match(/([\w\s]+)\s+(\S+)\s+(\d+)/);
-    if (match) {
-      return {
-        medicine: match[1].trim(),
-        date: match[2],
-        quantity: parseInt(match[3], 10)
-      };
-    }
-  }
-  throw new Error('No valid deduction data found in PDF.');
-}
-
-async function extractDataFromImage(file) {
-  // For simplicity, in this sample we don't implement OCR here.
-  // In real app, integrate with OCR API (e.g., Tesseract.js or cloud service) to extract text from image.
-  alert('Image extraction not implemented. Please upload a PDF voucher.');
-  return null;
-}
-
-function applyDeduction(medicineName, quantity) {
-  const item = medicineData.find(m => m["Medicine Name"].toLowerCase() === medicineName.toLowerCase());
-  if (!item) {
-    alert(`Medicine '${medicineName}' not found in stock.`);
-    return;
-  }
-  if (item.Quantity < quantity) {
-    alert(`Deduction quantity (${quantity}) exceeds current stock (${item.Quantity}).`);
-    return;
-  }
-  item.Quantity -= quantity;
-  saveDataToCloud();
-  renderTable();
-  alert(`Deducted ${quantity} units from ${medicineName}.`);
-}
 
 // QR Code result handler with confirmation to open
 function handleQRResult(msg) {
@@ -413,4 +575,4 @@ function isValidUrl(string) {
 }
 </script>
 </body>
-  </html>
+</html>
