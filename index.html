@@ -1,4 +1,4 @@
-!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
@@ -430,4 +430,149 @@ async function extractDataFromPDF(file) {
 // ----------------- Image OCR using Tesseract -----------------
 async function extractDataFromImage(file) {
   if(typeof Tesseract === 'undefined' && !window.Tesseract){
-  
+    alert('Tesseract not loaded. Make sure you added the Tesseract script tag in <head>.');
+    return null;
+  }
+  deductionSummary.textContent = 'Processing image... OCR in progress (may take few seconds)...';
+  const dataUrl = await new Promise((res, rej) => {
+    const fr = new FileReader();
+    fr.onload = e => res(e.target.result);
+    fr.onerror = rej;
+    fr.readAsDataURL(file);
+  });
+  const { data: { text } } = await Tesseract.recognize(dataUrl, 'eng', { logger: m => {
+    // optional progress logger
+  }});
+  const lines = text.split(/\r?\n/).map(l=>l.trim()).filter(Boolean);
+  let candidates = [];
+  for (let line of lines) {
+    const l = line.replace(/\s{2,}/g, ' ');
+    const qty = extractQuantityFromText(l);
+    const date = parseDateFromString(l);
+    if(qty !== null || date !== null){
+      candidates.push({line:l,qty,date});
+    } else {
+      if(/\d{1,5}/.test(l)){
+        candidates.push({line:l,qty:extractQuantityFromText(l),date:parseDateFromString(l)});
+      }
+    }
+  }
+  for(const c of candidates){
+    let name = c.line.replace(/(qty[:\s]*\d{1,5})/i,'').replace(/(\d{1,5}\s*(nos|tabs|tablets|amp|ampoules)?)/i,'').replace(/(exp|expiry|exp\.)[:\s]*\S*/ig,'').trim();
+    name = name.replace(/\b(MRP|RS|BATCH|BATCHNO|BATCH#)\b/ig,'').trim();
+    if(!name) continue;
+    const matched = getBestMedicineMatch(name) || null;
+    if(c.qty !== null){
+      return { medicine: matched ? (matched["Medicine Name"]||name) : name, quantity: c.qty, date: c.date || null };
+    } else if(matched){
+      return { medicine: matched["Medicine Name"], quantity: 1, date: c.date || null };
+    }
+  }
+  alert('OCR completed but no clear deduction line found. Please check voucher image quality or upload PDF.');
+  return null;
+}
+
+// ----------------- Improved applyDeduction with fuzzy matching -----------------
+function applyDeduction(medicineName, quantity) {
+  if(!medicineName){
+    alert('No medicine name provided.');
+    return;
+  }
+  quantity = Number(quantity);
+  if(isNaN(quantity) || quantity<=0){
+    alert('Invalid deduction quantity.');
+    return;
+  }
+  // Try exact match first
+  let item = medicineData.find(m => (m["Medicine Name"]||"").toLowerCase() === medicineName.toLowerCase());
+  // if not exact, try fuzzy best match
+  if(!item){
+    const matched = getBestMedicineMatch(medicineName);
+    if(matched) item = matched;
+  }
+  if(!item){
+    alert(`Medicine '${medicineName}' not found in stock. Closest matches:\n\n` + medicineData.slice(0,5).map(m=>m["Medicine Name"]).join('\n'));
+    return;
+  }
+  if(item.Quantity === undefined || item.Quantity === null) item.Quantity = 0;
+  if(item.Quantity < quantity){
+    alert(`Deduction quantity (${quantity}) exceeds current stock (${item.Quantity}) for '${item["Medicine Name"]}'.`);
+    return;
+  }
+  item.Quantity -= quantity;
+  saveDataToCloud();
+  renderTable();
+  alert(`Deducted ${quantity} units from ${item["Medicine Name"]}.`);
+}
+
+// ----------------- Deduction UI wiring (keeps previous behavior) -----------------
+const deductionBtn = document.getElementById('deductionBtn');
+const deductionFile = document.getElementById('deductionFile');
+const deductionModal = document.getElementById('deductionConfirmationModal');
+const deductionSummaryEl = document.getElementById('deductionSummary');
+const confirmDeductionBtn = document.getElementById('confirmDeductionBtn');
+const cancelDeductionBtn = document.getElementById('cancelDeductionBtn');
+
+deductionBtn.addEventListener('click', () => {
+  deductionFile.click();
+});
+
+deductionFile.addEventListener('change', async () => {
+  const file = deductionFile.files[0];
+  if (!file) return;
+  try {
+    let extractedData = null;
+    if (file.type === 'application/pdf') {
+      extractedData = await extractDataFromPDF(file);
+    } else if (file.type.startsWith('image/')) {
+      extractedData = await extractDataFromImage(file);
+    }
+    if (extractedData && extractedData.medicine && typeof extractedData.quantity === 'number') {
+      currentDeduction = extractedData;
+      deductionSummaryEl.textContent = `Medicine: ${extractedData.medicine}\nQuantity to Deduct: ${extractedData.quantity}\nDate: ${extractedData.date || new Date().toLocaleDateString()}`;
+      deductionModal.style.display = 'flex';
+    } else {
+      alert('Could not extract valid deduction data from the uploaded file.');
+    }
+  } catch (e) {
+    alert('Error processing the file: ' + e.message);
+  }
+  deductionFile.value = ''; // reset file input for next upload
+});
+
+confirmDeductionBtn.addEventListener('click', () => {
+  if (!currentDeduction) return;
+  applyDeduction(currentDeduction.medicine, currentDeduction.quantity);
+  currentDeduction = null;
+  deductionModal.style.display = 'none';
+});
+
+cancelDeductionBtn.addEventListener('click', () => {
+  currentDeduction = null;
+  deductionModal.style.display = 'none';
+});
+
+// QR Code result handler with confirmation to open
+function handleQRResult(msg) {
+  qrResult.textContent = `QR Code Content: ${msg}`;
+  stopQRScanner();
+  if (isValidUrl(msg)) {
+    if (confirm(`The QR code contains a URL:\n${msg}\n\nDo you want to open it in a new tab?`)) {
+      window.open(msg, '_blank');
+    }
+  } else {
+    alert('Scanned QR code content is not a valid URL.');
+  }
+}
+
+function isValidUrl(string) {
+  try {
+    new URL(string);
+    return true;
+  } catch (_) {
+    return false;  
+  }
+}
+</script>
+</body>
+</html>
