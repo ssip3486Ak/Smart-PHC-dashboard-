@@ -11,8 +11,6 @@
 <script src="https://unpkg.com/html5-qrcode"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js"></script>
-
-<!-- Tesseract.js for OCR (added) -->
 <script src="https://unpkg.com/tesseract.js@v4.1.1/dist/tesseract.min.js"></script>
 
 <style>
@@ -219,6 +217,9 @@ th { background: #0077b6; color: white; }
     <button onclick="exportExcel()" class="btn">Export Stock Excel</button>
     <button onclick="exportPDF()" class="btn">Export Stock PDF</button>
     <button onclick="exportStockReport()" class="btn">Export Stock Report Excel</button>
+    
+    <!-- 🆕 DELETE ALL DATA BUTTON - येथे add केलेले -->
+    <button onclick="confirmDeleteAll()" class="btn" style="background:#d9534f; margin-left:10px;">🗑️ Delete All Data</button>
   </div>
   <div class="card table-container"><table id="stockReportTable"><thead><tr><th>Medicine</th><th>Rack</th><th>Qty</th><th>Expiry</th></tr></thead><tbody></tbody></table></div>
 </section>
@@ -280,7 +281,9 @@ function renderNearExpiry(){ const tb=nearExpiryTable.querySelector("tbody"), al
 expiryDaysNear.onchange=renderNearExpiry; rackFilter.onchange=renderTable; searchBox.oninput=renderTable;
 
 excelFile.onchange=()=>{ const f=excelFile.files[0]; if(!f)return; const r=new FileReader(); r.onload=e=>{ const wb=XLSX.read(new Uint8Array(e.target.result),{type:'array'}); let d=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]); d=d.map(m=>({...m,"Expiry Date":toMMYYYY(m["Expiry Date"])})); mergeStock(d); }; r.readAsArrayBuffer(f); };
-pdfFile.onchange=()=>{ const f=pdfFile.files[0]; if(!f)return; const r=new FileReader(); r.onload=async function(){ const pdf=await pdfjsLib.getDocument({data:new Uint8Array(this.result)}).promise; let text=''; for(let p=1;p<=pdf.numPages;p++){const pg=await pdf.getPage(p); const tc=await pg.getTextContent(); text+=tc.items.map(i=>i.str).join(' ')+'\n';} let arr=[]; for(let line of text.split('\n')){let m=line.match(/([\w\s]+)\s+(\S+)\s+(\d+)/); if(m)arr.push({"Medicine Name":m[1].trim(),"Expiry Date":toMMYYYY(m[2]),"Quantity":+m[3],"Rack":""});} mergeStock(arr); }; r.readAsArrayBuffer(f); };
+pdfFile.onchange=()=>{ const f=pdfFile.files[0]; if(!f)return; const r=new FileReader(); r.onload=async function(){ const pdf=await pdfjsLib.getDocument({data:new Uint8Array(this.result)}).promise; let text=''; for(let p=1;p<=pdf.numPages;p++){const pg=await pdf.getPage(p); const tc=await pg.getTextContent(); text+=tc.items.map(i=>i.str).join(' ')+'
+';} let arr=[]; for(let line of text.split('
+')){let m=line.match(/([ws]+)s+(S+)s+(d+)/); if(m)arr.push({"Medicine Name":m[1].trim(),"Expiry Date":toMMYYYY(m[2]),"Quantity":+m[3],"Rack":""});} mergeStock(arr); }; r.readAsArrayBuffer(f); };
 function mergeStock(newData){ newData.forEach(n=>{ let ex=medicineData.find(o=>o["Medicine Name"].toLowerCase()===n["Medicine Name"].toLowerCase()&&o["Expiry Date"]===n["Expiry Date"]); ex?ex.Quantity+=n.Quantity:medicineData.push(n); }); saveDataToCloud(); renderTable(); }
 
 function exportExcel(){ XLSX.writeFile(XLSX.utils.book_append_sheet(XLSX.utils.book_new(),XLSX.utils.json_to_sheet(medicineData),"Stock"),"medicine_stock.xlsx"); }
@@ -297,39 +300,50 @@ window.startQRScanner=startQRScanner; window.stopQRScanner=stopQRScanner;
 
 document.querySelectorAll(".tab-btn").forEach(b=>b.onclick=()=>{ document.querySelectorAll(".tab-btn").forEach(x=>x.classList.remove("active")); b.classList.add("active"); document.querySelectorAll("section").forEach(s=>s.classList.remove("active")); document.getElementById(b.dataset.tab).classList.add("active"); if(b.dataset.tab==="expiry")renderNearExpiry(); if(b.dataset.tab==="reports")renderStockReportTable(); });
 
-// ----------------- New / replaced functions (OCR, PDF parsing, fuzzy match) -----------------
+// 🆕 DELETE ALL DATA FUNCTION - येथे add केलेले ✅
+window.confirmDeleteAll = function() {
+  if (confirm("⚠️ सावधान! सर्व medicine data कायमचे delete होईल?
+
+या action ला undo करता येणार नाही!
+
+Continue?")) {
+    medicineData = [];  // Array clear
+    saveDataToCloud();  // Firebase update
+    renderTable();      // Stock table refresh
+    renderNearExpiry(); // Expiry table clear
+    renderStockReportTable(); // Report table clear
+    alert("✅ सर्व data successfully delete झाले!");
+  }
+};
 
 // ----------------- Helper functions -----------------
 function normalizeText(s){
-  return (s||"").replace(/\s+/g,' ').trim();
+  return (s||"").replace(/s+/g,' ').trim();
 }
-function parseIntSafe(v){ const n=parseInt((v||"").replace(/[^\d-]/g,''),10); return isNaN(n)?null:n; }
+function parseIntSafe(v){ const n=parseInt((v||"").replace(/[^d-]/g,''),10); return isNaN(n)?null:n; }
 
-// Try to find date in many formats and return MM/YYYY like earlier
 function parseDateFromString(str){
   if(!str) return null;
-  str = str.replace(/[\u2018\u2019\u201C\u201D]/g,'"');
-  // common patterns: dd/mm/yyyy, dd-mm-yyyy, mm/yyyy, mm-yyyy, yyyy-mm-dd
+  str = str.replace(/[‘’“”]/g,'"');
   const datePatterns = [
-    /(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})/,   // dd/mm/yyyy or d-m-yy
-    /(\d{1,2})[\/\-](\d{4})/,                   // mm/yyyy
-    /(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/     // yyyy-mm-dd
+    /(d{1,2})[/-](d{1,2})[/-](d{2,4})/,
+    /(d{1,2})[/-](d{4})/,
+    /(d{4})[/-](d{1,2})[/-](d{1,2})/
   ];
   for(const p of datePatterns){
     const m = str.match(p);
     if(m){
-      if(m.length===4){ // dd/mm/yyyy
+      if(m.length===4){
         let dd=+m[1], mm=+m[2], yy=+m[3]; if(yy<100) yy += (yy>50?1900:2000);
-        return `${("0"+mm).slice(-2)}/${yy}`; // MM/YYYY
-      } else if(m.length===3){ // mm/yyyy
+        return `${("0"+mm).slice(-2)}/${yy}`;
+      } else if(m.length===3){
         let mm=+m[1], yy=+m[2]; if(yy<100) yy += (yy>50?1900:2000);
         return `${("0"+mm).slice(-2)}/${yy}`;
       }
     }
   }
-  // fallback: look for month names
   const months = {jan:1,feb:2,mar:3,apr:4,may:5,jun:6,jul:7,aug:8,sep:9,oct:10,nov:11,dec:12};
-  const m = str.toLowerCase().match(/(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s*(\d{4})?/);
+  const m = str.toLowerCase().match(/(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*.?s*(d{4})?/);
   if(m){
     const mm = months[m[1].slice(0,3)];
     const yy = m[2] ? +m[2] : (new Date()).getFullYear();
@@ -338,7 +352,6 @@ function parseDateFromString(str){
   return null;
 }
 
-// Simple Levenshtein distance for fuzzy matching
 function levenshtein(a,b){
   a = (a||"").toLowerCase(); b = (b||"").toLowerCase();
   if(!a) return b.length;
@@ -367,7 +380,6 @@ function getBestMedicineMatch(name){
     const d = levenshtein(name,cand);
     if(d < best.dist){ best = {idx:i,dist:d}; }
   }
-  // threshold: allow if distance less than 40% of candidate length
   const candLen = (candidates[best.idx]||"").length;
   if(best.idx>=0 && best.dist <= Math.max(1, Math.floor(candLen*0.4))){
     return medicineData[best.idx];
@@ -375,21 +387,18 @@ function getBestMedicineMatch(name){
   return null;
 }
 
-// Robust quantity extractor: looks for standalone numbers or patterns like x12, qty:12, 12nos etc.
 function extractQuantityFromText(s){
   if(!s) return null;
-  const patterns = [/qty[:\s]*?(\d{1,5})/i, /quantity[:\s]*?(\d{1,5})/i, /(?:\b|x)(\d{1,5})\s*(?:nos|tabs|tablets|amp|ampoules)?\b/i, /(\d{1,5})\s*(?:nos|tabs|tablets|amp|ampoules)\b/i];
+  const patterns = [/qty[:s]*?(d{1,5})/i, /quantity[:s]*?(d{1,5})/i, /(?:\b|x)(d{1,5})s*(?:nos|tabs|tablets|amp|ampoules)?\b/i, /(d{1,5})s*(?:nos|tabs|tablets|amp|ampoules)\b/i];
   for(const p of patterns){
     const m = s.match(p);
     if(m) return parseIntSafe(m[1]);
   }
-  // fallback: last number in the line
-  const lastNum = s.match(/(\d{1,5})(?!.*\d)/);
+  const lastNum = s.match(/(d{1,5})(?!.*d)/);
   if(lastNum) return parseIntSafe(lastNum[1]);
   return null;
 }
 
-// ----------------- Improved PDF extraction -----------------
 async function extractDataFromPDF(file) {
   const arrayBuffer = await file.arrayBuffer();
   const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
@@ -397,24 +406,27 @@ async function extractDataFromPDF(file) {
   for (let p = 1; p <= pdf.numPages; p++) {
     const page = await pdf.getPage(p);
     const content = await page.getTextContent();
-    text += content.items.map(i => i.str).join(' ') + '\n';
+    text += content.items.map(i => i.str).join(' ') + '
+';
   }
-  const lines = text.split(/\r?\n/).map(l=>l.trim()).filter(Boolean);
+  const lines = text.split(/
+?
+/).map(l=>l.trim()).filter(Boolean);
   let candidates = [];
   for (let line of lines) {
-    const l = line.replace(/\s{2,}/g, ' ');
+    const l = line.replace(/s{2,}/g, ' ');
     const qty = extractQuantityFromText(l);
     const date = parseDateFromString(l);
     if(qty !== null || date !== null){
       candidates.push({line:l,qty,date});
     } else {
-      if(/\d{1,5}/.test(l)){
+      if(/d{1,5}/.test(l)){
         candidates.push({line:l,qty:extractQuantityFromText(l),date:parseDateFromString(l)});
       }
     }
   }
   for(const c of candidates){
-    let name = c.line.replace(/(qty[:\s]*\d{1,5})/i,'').replace(/(\d{1,5}\s*(nos|tabs|tablets|amp|ampoules)?)/i,'').replace(/(exp|expiry|exp\.)[:\s]*\S*/ig,'').trim();
+    let name = c.line.replace(/(qty[:s]*d{1,5})/i,'').replace(/(d{1,5}s*(nos|tabs|tablets|amp|ampoules)?)/i,'').replace(/(exp|expiry|exp.)[:s]*S*/ig,'').trim();
     name = name.replace(/\b(MRP|RS|BATCH|BATCHNO|BATCH#)\b/ig,'').trim();
     if(!name) continue;
     const matched = getBestMedicineMatch(name) || null;
@@ -427,7 +439,6 @@ async function extractDataFromPDF(file) {
   throw new Error('No valid deduction data found in PDF.');
 }
 
-// ----------------- Image OCR using Tesseract -----------------
 async function extractDataFromImage(file) {
   if(typeof Tesseract === 'undefined' && !window.Tesseract){
     alert('Tesseract not loaded. Make sure you added the Tesseract script tag in <head>.');
@@ -440,25 +451,25 @@ async function extractDataFromImage(file) {
     fr.onerror = rej;
     fr.readAsDataURL(file);
   });
-  const { data: { text } } = await Tesseract.recognize(dataUrl, 'eng', { logger: m => {
-    // optional progress logger
-  }});
-  const lines = text.split(/\r?\n/).map(l=>l.trim()).filter(Boolean);
+  const { data: { text } } = await Tesseract.recognize(dataUrl, 'eng', { logger: m => {} });
+  const lines = text.split(/
+?
+/).map(l=>l.trim()).filter(Boolean);
   let candidates = [];
   for (let line of lines) {
-    const l = line.replace(/\s{2,}/g, ' ');
+    const l = line.replace(/s{2,}/g, ' ');
     const qty = extractQuantityFromText(l);
     const date = parseDateFromString(l);
     if(qty !== null || date !== null){
       candidates.push({line:l,qty,date});
     } else {
-      if(/\d{1,5}/.test(l)){
+      if(/d{1,5}/.test(l)){
         candidates.push({line:l,qty:extractQuantityFromText(l),date:parseDateFromString(l)});
       }
     }
   }
   for(const c of candidates){
-    let name = c.line.replace(/(qty[:\s]*\d{1,5})/i,'').replace(/(\d{1,5}\s*(nos|tabs|tablets|amp|ampoules)?)/i,'').replace(/(exp|expiry|exp\.)[:\s]*\S*/ig,'').trim();
+    let name = c.line.replace(/(qty[:s]*d{1,5})/i,'').replace(/(d{1,5}s*(nos|tabs|tablets|amp|ampoules)?)/i,'').replace(/(exp|expiry|exp.)[:s]*S*/ig,'').trim();
     name = name.replace(/\b(MRP|RS|BATCH|BATCHNO|BATCH#)\b/ig,'').trim();
     if(!name) continue;
     const matched = getBestMedicineMatch(name) || null;
@@ -472,7 +483,6 @@ async function extractDataFromImage(file) {
   return null;
 }
 
-// ----------------- Improved applyDeduction with fuzzy matching -----------------
 function applyDeduction(medicineName, quantity) {
   if(!medicineName){
     alert('No medicine name provided.');
@@ -483,15 +493,16 @@ function applyDeduction(medicineName, quantity) {
     alert('Invalid deduction quantity.');
     return;
   }
-  // Try exact match first
   let item = medicineData.find(m => (m["Medicine Name"]||"").toLowerCase() === medicineName.toLowerCase());
-  // if not exact, try fuzzy best match
   if(!item){
     const matched = getBestMedicineMatch(medicineName);
     if(matched) item = matched;
   }
   if(!item){
-    alert(`Medicine '${medicineName}' not found in stock. Closest matches:\n\n` + medicineData.slice(0,5).map(m=>m["Medicine Name"]).join('\n'));
+    alert(`Medicine '${medicineName}' not found in stock. Closest matches:
+
+` + medicineData.slice(0,5).map(m=>m["Medicine Name"]).join('
+'));
     return;
   }
   if(item.Quantity === undefined || item.Quantity === null) item.Quantity = 0;
@@ -505,7 +516,6 @@ function applyDeduction(medicineName, quantity) {
   alert(`Deducted ${quantity} units from ${item["Medicine Name"]}.`);
 }
 
-// ----------------- Deduction UI wiring (keeps previous behavior) -----------------
 const deductionBtn = document.getElementById('deductionBtn');
 const deductionFile = document.getElementById('deductionFile');
 const deductionModal = document.getElementById('deductionConfirmationModal');
@@ -529,7 +539,9 @@ deductionFile.addEventListener('change', async () => {
     }
     if (extractedData && extractedData.medicine && typeof extractedData.quantity === 'number') {
       currentDeduction = extractedData;
-      deductionSummaryEl.textContent = `Medicine: ${extractedData.medicine}\nQuantity to Deduct: ${extractedData.quantity}\nDate: ${extractedData.date || new Date().toLocaleDateString()}`;
+      deductionSummaryEl.textContent = `Medicine: ${extractedData.medicine}
+Quantity to Deduct: ${extractedData.quantity}
+Date: ${extractedData.date || new Date().toLocaleDateString()}`;
       deductionModal.style.display = 'flex';
     } else {
       alert('Could not extract valid deduction data from the uploaded file.');
@@ -537,7 +549,7 @@ deductionFile.addEventListener('change', async () => {
   } catch (e) {
     alert('Error processing the file: ' + e.message);
   }
-  deductionFile.value = ''; // reset file input for next upload
+  deductionFile.value = '';
 });
 
 confirmDeductionBtn.addEventListener('click', () => {
@@ -552,12 +564,14 @@ cancelDeductionBtn.addEventListener('click', () => {
   deductionModal.style.display = 'none';
 });
 
-// QR Code result handler with confirmation to open
 function handleQRResult(msg) {
   qrResult.textContent = `QR Code Content: ${msg}`;
   stopQRScanner();
   if (isValidUrl(msg)) {
-    if (confirm(`The QR code contains a URL:\n${msg}\n\nDo you want to open it in a new tab?`)) {
+    if (confirm(`The QR code contains a URL:
+${msg}
+
+Do you want to open it in a new tab?`)) {
       window.open(msg, '_blank');
     }
   } else {
